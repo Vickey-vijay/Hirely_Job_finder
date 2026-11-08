@@ -10,7 +10,19 @@ type Ctx = {
   /** Exchanges a Google ID token for our own session cookie. Throws a friendly Error on failure. */
   signInWithGoogle: (credential: string) => Promise<void>;
   signOut: () => Promise<void>;
+  /** Emails a 6-digit code. Throws a friendly Error on failure. */
+  requestEmailCode: (email: string) => Promise<void>;
+  /** Exchanges the emailed code for a session. Throws a friendly Error on failure. */
+  verifyEmailCode: (email: string, code: string) => Promise<void>;
 };
+
+async function postJson(url: string, body: unknown): Promise<Response> {
+  try {
+    return await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  } catch {
+    throw new Error("Can't reach the server. Please try again in a moment.");
+  }
+}
 
 const AuthCtx = createContext<Ctx>(null!);
 
@@ -45,13 +57,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(d.user);
   }, []);
 
+  const requestEmailCode = useCallback(async (email: string) => {
+    const res = await postJson("/api/auth/email/start", { email });
+    if (res.status === 400) throw new Error("That email doesn't look right. Please check it.");
+    if (res.status === 429) throw new Error("Too many codes requested. Please wait a few minutes.");
+    if (!res.ok) throw new Error("We couldn't send the email. Please try again.");
+  }, []);
+
+  const verifyEmailCode = useCallback(async (email: string, code: string) => {
+    const res = await postJson("/api/auth/email/verify", { email, code });
+    if (res.status === 429) throw new Error("Too many attempts. Please wait a minute.");
+    if (!res.ok) throw new Error("That code is wrong or expired. Check it, or request a new one.");
+    setUser(((await res.json()) as { user: User }).user);
+  }, []);
+
   const signOut = useCallback(async () => {
     googleLogout(); // stops Google from silently re-selecting this account
     setUser(null);
     try { await fetch("/api/auth/logout", { method: "POST" }); } catch { /* cookie expires anyway */ }
   }, []);
 
-  return <AuthCtx.Provider value={{ user, loading, signInWithGoogle, signOut }}>{children}</AuthCtx.Provider>;
+  return <AuthCtx.Provider value={{ user, loading, signInWithGoogle, signOut, requestEmailCode, verifyEmailCode }}>{children}</AuthCtx.Provider>;
 }
 
 export const useAuth = () => useContext(AuthCtx);

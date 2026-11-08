@@ -2,6 +2,23 @@
 
 Running record of what was built, when, and why. Newest first. Update this before every push.
 
+## 2026-11-08 — Email login, PostgreSQL, VPS kit, business guide (branch `feat/email-db-vps`)
+
+**Built**
+- Email login: `POST /api/auth/email/start` and `/verify`. 6-digit code, stored only as an HMAC hash, 10-minute expiry, single use, locked after 5 wrong tries, max 3 codes per email per 10 minutes. Same response whether or not the account exists. Mailer uses any SMTP provider; in development the code prints in the API console.
+- PostgreSQL replaces the JSON file: `pg` in production, auto-migrations from `api/migrations/`, `docker-compose.yml` for local DB. Google and email sign-ins merge into one account per email.
+- API moved to Express 5 (async errors handled). Google login is now optional so email login works without a Google client.
+- React login page: Google button, "or", email → code step with animated switch, resend cooldown, friendly errors.
+- `deploy/` (Nginx, systemd unit, backup and deploy scripts), `docs/VPS_DEPLOY.md`, `docs/DATABASE.md`, `docs/ROADMAP.md` (done / to-do as vertical slices), `docs/BUSINESS_SETUP.md` (India: Udyam, GST, bank, Razorpay, Meta, WhatsApp, DPDP, trademark).
+
+**Verified**
+- 10 API tests pass against PGlite (real Postgres engine in memory); API typecheck clean; web builds; login page renders with the email form.
+- **Not verified:** a real Postgres server, real SMTP delivery, real Google sign-in, the VPS scripts (written carefully, never run on a server).
+
+**Decisions**
+- Razorpay, not Stripe: Stripe's own docs list India as invite-only (checked 2026-11-08).
+- Email codes instead of passwords: nothing to leak or reset.
+
 ## 2026-11-08 — Real Google login (branch `feat/google-login`)
 
 **Built**
