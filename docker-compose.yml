@@ -1,0 +1,15 @@
+# Local development database. `docker compose up -d db`
+# For production on the VPS, see docs/VPS_DEPLOY.md (PostgreSQL is installed directly, not via this file).
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: hirely
+      POSTGRES_PASSWORD: hirely
+      POSTGRES_DB: hirely
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - hirely-pgdata:/var/lib/postgresql/data
+volumes:
+  hirely-pgdata:

@@ -10,7 +10,7 @@
 
 Security measures: server-side token verification, httpOnly cookie, origin allow-list on POSTs, rate limit (20/min) on login, `helmet` headers, 10 KB body limit, fail-fast config validation. Users are keyed by Google's stable `sub`, not email.
 
-The user store is a local JSON file (`api/data/users.json`, git-ignored) until PostgreSQL arrives (PRD 9.3).
+Users live in PostgreSQL (see `docs/DATABASE.md`). The same email signing in with Google or with an emailed code lands on one account. For the full production setup on your VPS follow **`docs/VPS_DEPLOY.md`**; this page covers only the Google side.
 
 ## One-time Google Cloud setup (only you can do this)
 1. Go to https://console.cloud.google.com and create a project (e.g. "Hirely").
@@ -22,9 +22,11 @@ The user store is a local JSON file (`api/data/users.json`, git-ignored) until P
 ## Configure
 ```powershell
 # api/.env  (copy from api/.env.example)
-GOOGLE_CLIENT_ID=<your client id>
+DATABASE_URL=postgres://hirely:hirely@localhost:5432/hirely   # docker compose up -d db
+GOOGLE_CLIENT_ID=<your client id>        # optional: leave empty to use email login only
 JWT_SECRET=<48+ random bytes, see below>
 ALLOWED_ORIGINS=http://localhost:5173
+# SMTP_* left empty in development: the email code is printed in the API console
 
 # web/.env  (copy from web/.env.example)
 VITE_GOOGLE_CLIENT_ID=<same client id>
@@ -48,10 +50,10 @@ Google only accepts `localhost` or a real HTTPS domain as an origin, so `http://
 3. Open the tunnel URL on your phone.
 
 ## Tests
-`cd api ; npm test` runs 7 tests with a fake Google verifier (cookie flags, bad token, bad origin, tampered cookie, same-user-on-relogin, config validation). Real Google tokens can only be tested in a browser with your client ID.
+`cd api ; npm test` runs 10 tests against an in-memory Postgres with a fake Google verifier and fake mailer (cookie flags, bad token, bad origin, tampered cookie, same user via Google and email, code single-use, lockout, expiry, rate limit, config validation). Real Google tokens can only be tested in a browser with your client ID.
 
 ## Before going public
 - Set `NODE_ENV=production` (turns on `Secure` cookies) and serve over HTTPS.
 - Publish the OAuth consent screen (move from Testing to In production) so non-test users can sign in.
 - Add a privacy policy URL on the consent screen.
-- Replace the JSON user store with PostgreSQL.
+- Everything above, plus server hardening, backups and Nginx: `docs/VPS_DEPLOY.md`.
