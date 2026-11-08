@@ -1,37 +1,57 @@
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { googleLogout } from "@react-oauth/google";
 
-/**
- * PLACEHOLDER AUTH — no real Google sign-in yet.
- * Phase 1 of the PRD replaces this with Google OAuth verified on the backend.
- * Here we only store a demo user in localStorage so the UI flow can be built.
- */
-export type User = { name: string; email: string };
+export type User = { id: string; name: string; email: string; picture: string | null };
 
-type Ctx = { user: User | null; signIn: (name: string) => void; signOut: () => void };
+type Ctx = {
+  user: User | null;
+  /** true until the first /me check finishes, so we don't flash the login page at signed-in users */
+  loading: boolean;
+  /** Exchanges a Google ID token for our own session cookie. Throws a friendly Error on failure. */
+  signInWithGoogle: (credential: string) => Promise<void>;
+  signOut: () => Promise<void>;
+};
+
 const AuthCtx = createContext<Ctx>(null!);
-const KEY = "hirely.demoUser";
-
-function load(): User | null {
-  try {
-    const raw = localStorage.getItem(KEY);
-    return raw ? (JSON.parse(raw) as User) : null;
-  } catch {
-    return null;
-  }
-}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(load);
-  const signIn = (name: string) => {
-    const u = { name, email: "demo@hirely.app" };
-    setUser(u);
-    try { localStorage.setItem(KEY, JSON.stringify(u)); } catch { /* ignore */ }
-  };
-  const signOut = () => {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const ctrl = new AbortController();
+    fetch("/api/auth/me", { signal: ctrl.signal })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { user: User } | null) => setUser(d?.user ?? null))
+      .catch(() => { /* API offline or aborted: treat as signed out */ })
+      .finally(() => { if (!ctrl.signal.aborted) setLoading(false); });
+    return () => ctrl.abort();
+  }, []);
+
+  const signInWithGoogle = useCallback(async (credential: string) => {
+    let res: Response;
+    try {
+      res = await fetch("/api/auth/google", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ credential }),
+      });
+    } catch {
+      throw new Error("Can't reach the server. Is the API running?");
+    }
+    if (res.status === 429) throw new Error("Too many attempts. Please wait a minute and try again.");
+    if (!res.ok) throw new Error("Google sign-in didn't go through. Please try again.");
+    const d = (await res.json()) as { user: User };
+    setUser(d.user);
+  }, []);
+
+  const signOut = useCallback(async () => {
+    googleLogout(); // stops Google from silently re-selecting this account
     setUser(null);
-    try { localStorage.removeItem(KEY); } catch { /* ignore */ }
-  };
-  return <AuthCtx.Provider value={{ user, signIn, signOut }}>{children}</AuthCtx.Provider>;
+    try { await fetch("/api/auth/logout", { method: "POST" }); } catch { /* cookie expires anyway */ }
+  }, []);
+
+  return <AuthCtx.Provider value={{ user, loading, signInWithGoogle, signOut }}>{children}</AuthCtx.Provider>;
 }
 
 export const useAuth = () => useContext(AuthCtx);
