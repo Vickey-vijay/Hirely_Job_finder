@@ -1,7 +1,7 @@
 export type Config = {
   googleClientId: string; // empty = Google login disabled
   jwtSecret: string;
-  databaseUrl: string;
+  databaseUrl: string; // empty = embedded dev database
   allowedOrigins: string[];
   port: number;
   production: boolean;
@@ -20,7 +20,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     problems.push("GOOGLE_CLIENT_ID must end with .apps.googleusercontent.com (or leave it empty to disable Google login)");
   }
   if (jwtSecret.length < 32) problems.push("JWT_SECRET must be at least 32 characters");
-  if (!/^postgres(ql)?:\/\//.test(databaseUrl)) problems.push("DATABASE_URL must be a postgres:// connection string");
+  // Empty is fine in development (an embedded database is used). Production must point at a real server.
+  if (databaseUrl ? !/^postgres(ql)?:\/\//.test(databaseUrl) : production) {
+    problems.push("DATABASE_URL must be a postgres:// connection string" + (production ? " (required in production)" : ""));
+  }
 
   let smtp: Config["smtp"];
   if (env.SMTP_HOST) {

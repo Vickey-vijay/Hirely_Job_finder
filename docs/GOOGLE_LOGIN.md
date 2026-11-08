@@ -22,7 +22,7 @@ Users live in PostgreSQL (see `docs/DATABASE.md`). The same email signing in wit
 ## Configure
 ```powershell
 # api/.env  (copy from api/.env.example)
-DATABASE_URL=postgres://hirely:hirely@localhost:5432/hirely   # docker compose up -d db
+DATABASE_URL=                            # leave empty in development: embedded database, nothing to install
 GOOGLE_CLIENT_ID=<your client id>        # optional: leave empty to use email login only
 JWT_SECRET=<48+ random bytes, see below>
 ALLOWED_ORIGINS=http://localhost:5173
@@ -48,6 +48,14 @@ Google only accepts `localhost` or a real HTTPS domain as an origin, so `http://
 1. Run `cloudflared tunnel --url http://localhost:5173` (or ngrok). You get an `https://something.trycloudflare.com` URL.
 2. Add that URL to the OAuth client's **Authorized JavaScript origins** and to `ALLOWED_ORIGINS` in `api/.env`, then restart the API.
 3. Open the tunnel URL on your phone.
+
+## Troubleshooting Google errors
+| Google says | Cause and fix |
+|---|---|
+| **401 invalid_client — "The OAuth client was not found"** | The Client ID the app is sending doesn't exist in Google. In development the login page prints the ID it loaded (small text under the button); compare it character by character with Google Cloud → Credentials. Common causes: ID copied from a different Google Cloud project; client was deleted; value truncated, has quotes or spaces; `web/.env` saved as `.env.txt` by Notepad; `npm run dev` not restarted after editing `.env`; you pasted the *Client secret* or a project number instead of the *Client ID*. |
+| **400 origin_mismatch** | `http://localhost:5173` (exact, no trailing slash) is missing from *Authorized JavaScript origins*. Wait a few minutes after saving. |
+| **403 access_denied / app not verified** | Consent screen is in *Testing*: add your Gmail under *Test users*. |
+| Button missing | `VITE_GOOGLE_CLIENT_ID` is empty. A dev note on the login page tells you. |
 
 ## Tests
 `cd api ; npm test` runs 10 tests against an in-memory Postgres with a fake Google verifier and fake mailer (cookie flags, bad token, bad origin, tampered cookie, same user via Google and email, code single-use, lockout, expiry, rate limit, config validation). Real Google tokens can only be tested in a browser with your client ID.
