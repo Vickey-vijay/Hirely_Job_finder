@@ -2,7 +2,7 @@ import "dotenv/config";
 import { OAuth2Client } from "google-auth-library";
 import { createApp } from "./app.js";
 import { loadConfig } from "./config.js";
-import { createPgDb, migrate } from "./db.js";
+import { createEmbeddedDb, createPgDb, migrate } from "./db.js";
 import { createMailer } from "./mailer.js";
 import { createStore } from "./store.js";
 
@@ -15,8 +15,14 @@ try {
   process.exit(1);
 }
 
-const db = createPgDb(cfg.databaseUrl);
+let db;
 try {
+  if (cfg.databaseUrl) {
+    db = createPgDb(cfg.databaseUrl);
+  } else {
+    db = await createEmbeddedDb("data/pgdata");
+    console.log("No DATABASE_URL set: using the embedded dev database in api/data/pgdata (development only).");
+  }
   await migrate(db);
 } catch (e) {
   console.error("Database error:", (e as Error).message);

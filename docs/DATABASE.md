@@ -2,7 +2,10 @@
 
 PostgreSQL 16. The API applies SQL files from `api/migrations/` automatically on start, in filename order, each in a transaction, and records them in `schema_migrations`. To change the schema, add a new file (`002_something.sql`); never edit an applied one.
 
-## Run locally (Windows or Mac, Docker Desktop)
+## Run locally
+**Easiest (default):** leave `DATABASE_URL` empty in `api/.env`. In development the API then uses an embedded Postgres engine (PGlite) stored in `api/data/pgdata/` (git-ignored). No Docker, no install. Delete that folder to reset your local data. This fallback is disabled when `NODE_ENV=production`.
+
+**Real Postgres (closer to production), Windows or Mac with Docker Desktop:**
 ```powershell
 docker compose up -d db          # from the repo root
 # api/.env:  DATABASE_URL=postgres://hirely:hirely@localhost:5432/hirely

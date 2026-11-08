@@ -15,6 +15,12 @@ Running record of what was built, when, and why. Newest first. Update this befor
 - 10 API tests pass against PGlite (real Postgres engine in memory); API typecheck clean; web builds; login page renders with the email form.
 - **Not verified:** a real Postgres server, real SMTP delivery, real Google sign-in, the VPS scripts (written carefully, never run on a server).
 
+**Fix (same day): Google login appeared to stop working.**
+- Cause: the API required `DATABASE_URL` and a running Postgres, so with the owner's existing `.env` it exited on startup and the Google button's request failed.
+- Fix: in development an empty `DATABASE_URL` now uses an embedded Postgres (PGlite) in `api/data/pgdata`. Production still requires a real `DATABASE_URL`. Google and email login both work with no database setup.
+- Added a dev-only hint on the login page when `VITE_GOOGLE_CLIENT_ID` is missing, so the Google button never disappears silently.
+- Verified: API boots with a Google-only style env, `/api/auth/google` reaches token verification (401 for a fake token), `/api/auth/email/start` works, and the login page shows the Google button and the email form together. 10 tests pass. A real Google sign-in is still untested.
+
 **Decisions**
 - Razorpay, not Stripe: Stripe's own docs list India as invite-only (checked 2026-11-08).
 - Email codes instead of passwords: nothing to leak or reset.

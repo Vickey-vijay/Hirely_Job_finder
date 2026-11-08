@@ -81,6 +81,12 @@ export default function Login() {
                   </div>
                 )}
 
+                {!GOOGLE_CLIENT_ID && import.meta.env.DEV && (
+                  <p className="muted" style={{ fontSize: 12, marginTop: 14 }}>
+                    Dev note: Google sign-in is hidden because <code>VITE_GOOGLE_CLIENT_ID</code> is not set in <code>web/.env</code> (restart <code>npm run dev</code> after adding it).
+                  </p>
+                )}
+
                 {GOOGLE_CLIENT_ID && <div className="divider"><span>or</span></div>}
 
                 <form onSubmit={sendCode} style={{ marginTop: GOOGLE_CLIENT_ID ? 0 : 20 }}>

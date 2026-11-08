@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import pg from "pg";
 
@@ -17,6 +17,23 @@ export function createPgDb(connectionString: string): Db {
     },
     async exec(sql) { await pool.query(sql); },
     close: () => pool.end(),
+  };
+}
+
+/**
+ * Zero-setup development database: a real Postgres engine (PGlite, WASM) stored in a local folder.
+ * Used only when DATABASE_URL is empty and NODE_ENV is not production, so Google/email login
+ * work immediately after `npm run dev` with no Docker and no installed Postgres.
+ */
+export async function createEmbeddedDb(dir: string): Promise<Db> {
+  const { PGlite } = await import("@electric-sql/pglite");
+  mkdirSync(dir, { recursive: true });
+  const pg = new PGlite(dir);
+  await pg.waitReady;
+  return {
+    async query<T>(sql: string, params?: unknown[]) { return (await pg.query<T>(sql, params)).rows as T[]; },
+    async exec(sql) { await pg.exec(sql); },
+    close: () => pg.close(),
   };
 }
 

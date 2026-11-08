@@ -47,7 +47,10 @@ const cookieOf = (r: Response) => r.headers.get("set-cookie")!.split(";")[0];
 test("config rejects missing or weak settings", () => {
   assert.throws(() => loadConfig({}), /JWT_SECRET/);
   assert.throws(() => loadConfig({ ...env, JWT_SECRET: "short" }), /JWT_SECRET/);
-  assert.throws(() => loadConfig({ ...env, DATABASE_URL: "" }), /DATABASE_URL/);
+  assert.throws(() => loadConfig({ ...env, DATABASE_URL: "mysql://x" }), /DATABASE_URL/);
+  // Development without DATABASE_URL is fine (embedded DB); production without it is not.
+  assert.doesNotThrow(() => loadConfig({ ...env, DATABASE_URL: "" }));
+  assert.throws(() => loadConfig({ ...env, DATABASE_URL: "", NODE_ENV: "production", SMTP_HOST: "h", SMTP_USER: "u", SMTP_PASS: "p", MAIL_FROM: "a@b.c" }), /DATABASE_URL/);
   assert.throws(() => loadConfig({ ...env, GOOGLE_CLIENT_ID: "nope" }), /GOOGLE_CLIENT_ID/);
   assert.throws(() => loadConfig({ ...env, NODE_ENV: "production" }), /SMTP_HOST/);
   assert.doesNotThrow(() => loadConfig({ ...env, GOOGLE_CLIENT_ID: "" })); // Google is optional

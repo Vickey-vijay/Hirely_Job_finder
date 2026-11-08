@@ -22,7 +22,7 @@ Users live in PostgreSQL (see `docs/DATABASE.md`). The same email signing in wit
 ## Configure
 ```powershell
 # api/.env  (copy from api/.env.example)
-DATABASE_URL=postgres://hirely:hirely@localhost:5432/hirely   # docker compose up -d db
+DATABASE_URL=                            # leave empty in development: embedded database, nothing to install
 GOOGLE_CLIENT_ID=<your client id>        # optional: leave empty to use email login only
 JWT_SECRET=<48+ random bytes, see below>
 ALLOWED_ORIGINS=http://localhost:5173
