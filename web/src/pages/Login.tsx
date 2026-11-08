@@ -81,6 +81,12 @@ export default function Login() {
                   </div>
                 )}
 
+                {GOOGLE_CLIENT_ID && import.meta.env.DEV && (
+                  <p className="muted" style={{ fontSize: 11, marginTop: 8, wordBreak: "break-all" }}>
+                    Dev: using Google client <code>{GOOGLE_CLIENT_ID}</code>. If Google says "OAuth client was not found", this value is wrong.
+                  </p>
+                )}
+
                 {!GOOGLE_CLIENT_ID && import.meta.env.DEV && (
                   <p className="muted" style={{ fontSize: 12, marginTop: 14 }}>
                     Dev note: Google sign-in is hidden because <code>VITE_GOOGLE_CLIENT_ID</code> is not set in <code>web/.env</code> (restart <code>npm run dev</code> after adding it).
