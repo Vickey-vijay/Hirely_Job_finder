@@ -19,14 +19,20 @@ export default function Dashboard() {
       <main className="page">
         <header className="topbar">
           <div className="brand"><i /> Hirely</div>
-          <button className="btn soft" onClick={signOut}>Sign out</button>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            {user?.picture && (
+              <img src={user.picture} alt="" width={36} height={36} referrerPolicy="no-referrer"
+                style={{ borderRadius: "50%", border: "2px solid var(--paper)" }} />
+            )}
+            <button className="btn soft" onClick={() => signOut()}>Sign out</button>
+          </div>
         </header>
         <motion.div variants={stagger} initial="hidden" animate="show">
           <motion.div variants={rise} style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <Orb />
             <div>
               <p className="eyebrow">Radar on</p>
-              <h1 style={{ fontSize: "clamp(28px,6vw,44px)" }}>{greeting()}, {user?.name}.</h1>
+              <h1 style={{ fontSize: "clamp(28px,6vw,44px)" }}>{greeting()}, {user?.name.split(" ")[0]}.</h1>
               <p className="muted">We're watching so you don't have to.</p>
             </div>
           </motion.div>

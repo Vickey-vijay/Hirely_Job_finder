@@ -2,6 +2,22 @@
 
 Running record of what was built, when, and why. Newest first. Update this before every push.
 
+## 2026-11-08 — Real Google login (branch `feat/google-login`)
+
+**Built**
+- `api/`: Express + TypeScript. `POST /api/auth/google` verifies the Google ID token server-side, `GET /api/auth/me`, `POST /api/auth/logout`, `GET /api/health`. httpOnly SameSite=Lax session cookie (7 days), origin allow-list, rate limit, helmet, fail-fast config validation. JSON-file user store (temporary, replaced by PostgreSQL).
+- `web/`: Google's official button via `@react-oauth/google`, session restored from `/api/auth/me` on load, real name and avatar on the dashboard, proper sign-out, friendly error messages, Vite proxy so the cookie is same-origin.
+- `docs/GOOGLE_LOGIN.md`: Google Cloud setup, env config, Windows run steps, phone testing via tunnel, go-live checklist.
+
+**Verified**
+- API: typecheck clean; 7 tests pass with a fake Google verifier (cookie flags, bad token, bad origin, tampered cookie, same user on re-login, config validation).
+- Web: builds; login page shows a clear "not set up yet" message when no client ID is set.
+- **Not verified:** a real Google sign-in. It needs the owner's OAuth client ID (only they can create it).
+
+**Gotchas**
+- Google rejects LAN IP origins like `http://192.168.x.x:5173`. Phone testing needs an HTTPS tunnel (see the doc).
+- The old demo login was removed; the app now requires the API running.
+
 ## 2026-11-08 — Web UI v0.1 (branch `feat/web-ui`)
 
 **Built**

@@ -12,7 +12,8 @@ import Matches from "./pages/Matches";
 import Settings from "./pages/Settings";
 
 function Private({ children }: { children: JSX.Element }) {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+  if (loading) return null; // session check in flight; avoids bouncing signed-in users to /login
   return user ? children : <Navigate to="/login" replace />;
 }
 
