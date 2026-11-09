@@ -56,7 +56,7 @@ Four things take calendar time that you can't speed up: **bank account**, **GST 
 ## Week 3 — Nov 23 to 29: payments, jobs, matching
 **YOU**
 20. Pick the first job sources (recommended: **Adzuna India API**, **Greenhouse** and **Lever** public boards for 20–30 companies you choose). Get the Adzuna API key. Get a lawyer/CA glance at source terms.
-21. Develop the WhatsApp number setup: register the new SIM in WhatsApp Business Platform, set display name, **submit templates** (`job_match_alert`, `subscription_expiring`, `subscription_ended`). Add a payment method in Meta.
+21. Set up WhatsApp: register the new SIM in WhatsApp Business Platform, set display name, **submit templates** (`job_match_alert`, `subscription_expiring`, `subscription_ended`). Add a payment method in Meta.
 22. **Nov 29 decision:** is Meta verification approved? If not, confirm the **email-alerts-first fallback**.
 
 **DEV**
