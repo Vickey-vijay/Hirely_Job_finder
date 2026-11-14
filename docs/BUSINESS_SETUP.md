@@ -1,5 +1,7 @@
 # Business & Legal Setup Guide (India) — from zero to taking payments
 
+> **Read `START_HERE.md` first.** It is newer and specific to what is now built (three plans at 99 / 199 / 499, no-refund policy, exact settings and commands). This file is longer background on each registration; where the two differ, `START_HERE.md` is right.
+
 Read this top to bottom and do the steps in order. Each step says what it is, why you need it, where to do it, what to have ready, and what it unlocks.
 
 > **Not legal, tax or financial advice.** Rules, thresholds and fees change. Items marked **CA** should be confirmed with a Chartered Accountant (or Company Secretary / lawyer) before you act. A few hours of their time early is much cheaper than fixing mistakes later. Facts below were checked against public sources on 2026-11-08; re-check anything with a number in it.

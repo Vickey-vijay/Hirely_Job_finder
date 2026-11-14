@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Daily PostgreSQL backup, keeps 14 days. Run as user "hirely" from cron.
+# Daily PostgreSQL backup, keeps 14 days. Installed as a cron job by setup-server.sh.
 set -euo pipefail
 DIR=/var/backups/hirely
 mkdir -p "$DIR"

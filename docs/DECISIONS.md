@@ -27,3 +27,20 @@ Answers to the open questions in PRD Section 17, plus decisions made during UI w
 - **Motion carries the personality, layout stays minimal.** Page switches, the splash and shared-element glides are where the effort went.
 - **Fonts:** Fraunces (headings, warm serif) and Inter (body).
 - **Windows-first dev:** `.gitattributes` forces LF line endings; no spaces in paths.
+
+## Decisions for v1 (2026-11-15)
+These replace the earlier answers above where they differ. Reviewed with Opus before building.
+
+| Question | Decision | Why |
+|---|---|---|
+| Plans | Starter 99 (1 role), Plus 199 (5 roles), Pro 499 (tailored resumes) | Owner's brief |
+| Billing | Monthly auto-debit through Razorpay Subscriptions; one-time 30-day pass as a fallback switch | Owner asked for auto-debit; Subscriptions may need separate approval for a new merchant |
+| Refunds | None for a period that has started; four narrow exceptions (double charge, charge after cancelling, never activated, 7+ days outage) | Owner asked for no refunds; the exceptions are the cases no merchant can defend |
+| Cancellation | Always available, effective at period end | A UPI mandate can be cancelled from the customer's own app, and hiding cancellation is a listed dark pattern (CCPA guidelines, 2023) |
+| Upgrade | New purchase replaces the old plan immediately, no credit | UPI Autopay subscriptions cannot be switched in place |
+| Database | PostgreSQL tuned small (shared_buffers 32 MB) | Existing code and tests already used it; about 60 to 90 MB |
+| Alert volume | Digests: 1 / 2 / 3 a day by plan, up to 5 jobs each, score 6 or more; Pro adds up to 2 instant alerts for 9+ | WhatsApp per-message cost; Meta may class alerts as Marketing |
+| Matching | Rules (title 50%, skills 27%, location 15%, experience 8%); optional Claude Haiku second opinion on the best unsent matches | Works with no AI bill; every score is explainable |
+| Tailored resume | Generated when the user asks, 5 a day, only from the uploaded resume | Cost, and honesty |
+| Job sources | Public documented JSON feeds only; each polled every 20 minutes or more | "Every minute" per source would be abusive and finds nothing extra |
+| Palette | "Clear Sky": navy ink, trust blue, verified green, a little amber | Owner asked for trusted, verified, honest colours |

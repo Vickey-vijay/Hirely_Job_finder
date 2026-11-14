@@ -2,6 +2,26 @@
 
 Running record of what was built, when, and why. Newest first. Update this before every push.
 
+## 2026-11-15 - Full v1 product, deployed in test mode (branch `feat/v1-full-product`)
+
+**Built**
+- Plans (Starter 99 / Plus 199 / Pro 499), Razorpay Subscriptions with signed checkout confirmation and webhooks, a one-time 30-day pass fallback, a no-money test mode, stop renewal at period end, upgrade, "I got a job".
+- Profile set-up with resume upload (PDF / DOCX / TXT; only the text is kept) and automatic reading of roles, skills, cities and experience.
+- Job collection from public JSON feeds (Greenhouse, Lever, Ashby, SmartRecruiters, Recruitee, Workable, Adzuna India, Remotive, Jobicy, Himalayas); 58 company boards seeded after checking each returns India jobs.
+- Rule-based 1 to 10 scoring with reasons, a free "how many jobs fit you" preview before payment, optional AI refinement.
+- Alerts: digests at fixed India times by plan, instant alerts on Pro, email, WhatsApp Cloud API template and replies (STOP, PAUSE, RESUME, MORE).
+- Pro tailored resume (Claude), capped at 5 a day, never inventing experience.
+- New website: landing page with animated alert preview, set-up steps, plans and checkout, dashboard, matches, settings, policies, admin. New "Clear Sky" palette (trust blue, verified green).
+- Server: PostgreSQL 15 tuned small, `hirely-api` service capped at 320 MB, nginx site, HTTPS, nightly backup, `deploy/push.sh`.
+- `docs/START_HERE.md`: the owner's step-by-step guide.
+
+**Verified**
+- 16 API tests pass (PGlite). Web builds. Clicked through sign-in, set-up, a test-mode purchase, dashboard, matches and settings locally with real collected jobs. Live site answers over HTTPS; other sites on the server still answer.
+- **Not verified:** real Google sign-in, real Razorpay payment, real WhatsApp message, real email delivery, Adzuna, Claude. Each needs the owner's account.
+
+**Decisions** (reviewed with Opus; see `DECISIONS.md`)
+- Kept PostgreSQL; Razorpay Subscriptions with a pass fallback; digests instead of a message per job; rules first, AI optional; "no refund, cancel renewal any time" instead of "cannot cancel".
+
 ## 2026-11-08 — Email login, PostgreSQL, VPS kit, business guide (branch `feat/email-db-vps`)
 
 **Built**

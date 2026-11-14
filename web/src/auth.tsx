@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { googleLogout } from "@react-oauth/google";
 
-export type User = { id: string; name: string; email: string; picture: string | null };
+export type User = { id: string; name: string; email: string; picture: string | null; isAdmin?: boolean };
 
 type Ctx = {
   user: User | null;

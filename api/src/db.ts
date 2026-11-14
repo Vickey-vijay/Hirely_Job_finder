@@ -10,7 +10,7 @@ export interface Db {
 }
 
 export function createPgDb(connectionString: string): Db {
-  const pool = new pg.Pool({ connectionString, max: 10 });
+  const pool = new pg.Pool({ connectionString, max: 5 });
   return {
     async query<T>(sql: string, params?: unknown[]) {
       return (await pool.query(sql, params)).rows as T[];

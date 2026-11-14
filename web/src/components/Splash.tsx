@@ -8,8 +8,8 @@ export default function Splash({ onDone }: { onDone: () => void }) {
   const [i, setI] = useState(0);
 
   useEffect(() => {
-    const rot = setInterval(() => setI((n) => Math.min(n + 1, messages.length - 1)), 650);
-    const end = setTimeout(onDone, 2400);
+    const rot = setInterval(() => setI((n) => Math.min(n + 1, messages.length - 1)), 450);
+    const end = setTimeout(onDone, 1300);
     return () => { clearInterval(rot); clearTimeout(end); };
   }, [onDone]);
 
