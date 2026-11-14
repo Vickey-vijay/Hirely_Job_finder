@@ -1,5 +1,5 @@
 [Unit]
-Description=Hirely API
+Description=Hirely API and job worker
 After=network.target postgresql.service
 Wants=postgresql.service
 
@@ -8,9 +8,11 @@ Type=simple
 User=hirely
 WorkingDirectory=/srv/hirely/api
 EnvironmentFile=/srv/hirely/api/.env
-ExecStart=/usr/bin/node dist/index.js
+ExecStart=/usr/bin/node --max-old-space-size=220 dist/index.js
 Restart=always
-RestartSec=3
+RestartSec=5
+# Keep this small app from starving the other apps on a 1 GB server
+MemoryMax=320M
 # Hardening
 NoNewPrivileges=true
 PrivateTmp=true

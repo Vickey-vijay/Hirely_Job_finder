@@ -5,6 +5,11 @@ import { loadConfig } from "./config.js";
 import { createEmbeddedDb, createPgDb, migrate } from "./db.js";
 import { createMailer } from "./mailer.js";
 import { createStore } from "./store.js";
+import { createBilling } from "./billing.js";
+import { createLlm } from "./llm.js";
+import { createNotifier } from "./notify.js";
+import { createPipeline } from "./pipeline.js";
+import { seedSources } from "./seed.js";
 
 let cfg;
 try {
@@ -32,10 +37,18 @@ try {
 
 const client = cfg.googleClientId ? new OAuth2Client(cfg.googleClientId) : null;
 
+const mailer = createMailer(cfg);
+const billing = createBilling(cfg, db);
+const notifier = createNotifier(cfg, db, mailer);
+const llm = createLlm(cfg);
+const pipeline = createPipeline(cfg, db, billing, notifier, llm);
+await seedSources(db);
+
 const app = createApp({
   cfg,
   store: createStore(db),
-  mailer: createMailer(cfg),
+  mailer,
+  product: { db, billing, notifier, pipeline, llm },
   async verifyGoogle(credential) {
     if (!client) throw new Error("google disabled");
     // Checks signature, expiry, issuer (accounts.google.com) and that the token was issued for OUR client ID.
@@ -46,8 +59,12 @@ const app = createApp({
   },
 });
 
-const server = app.listen(cfg.port, () => console.log(`Hirely API listening on http://localhost:${cfg.port}`));
+const server = app.listen(cfg.port, "127.0.0.1", () => {
+  console.log(`Hirely API listening on http://localhost:${cfg.port}`);
+  console.log(`  payments: ${cfg.billingMode} | whatsapp: ${cfg.whatsapp ? "on" : "off"} | ai: ${cfg.llm ? cfg.llm.model : "off"} | adzuna: ${cfg.adzuna ? "on" : "off"} | email: ${mailer.enabled ? "on" : "off"} | google: ${cfg.googleClientId ? "on" : "off"}`);
+});
+pipeline.start();
 
-const shutdown = () => { server.close(() => db.close().finally(() => process.exit(0))); };
+const shutdown = () => { pipeline.stop(); server.close(() => db.close().finally(() => process.exit(0))); };
 process.on("SIGTERM", shutdown);
 process.on("SIGINT", shutdown);

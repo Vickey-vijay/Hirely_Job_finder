@@ -7,9 +7,10 @@ import jwt from "jsonwebtoken";
 import type { Config } from "./config.js";
 import type { Mailer } from "./mailer.js";
 import type { Profile, Store, User } from "./store.js";
+import { mountProduct, type ProductDeps } from "./routes.js";
 
 export const COOKIE = "hirely_session";
-const SESSION_DAYS = 7;
+const SESSION_DAYS = 30;
 const CODE_TTL_MIN = 10;
 const MAX_CODES_PER_WINDOW = 3; // per email per 10 minutes
 const MAX_ATTEMPTS = 5;
@@ -20,17 +21,23 @@ export type Deps = {
   mailer: Mailer;
   /** Verifies a Google ID token and returns the verified profile, or throws. Injected so tests need no network. */
   verifyGoogle: (credential: string) => Promise<Profile>;
+  /** Billing, matching, alerts. Optional so the login tests can run without them. */
+  product?: Omit<ProductDeps, "cfg" | "emailLogin">;
 };
 
-const publicUser = (u: User) => ({ id: u.id, name: u.name, email: u.email, picture: u.picture });
+
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
-export function createApp({ cfg, store, mailer, verifyGoogle }: Deps) {
+export function createApp({ cfg, store, mailer, verifyGoogle, product }: Deps) {
+  const isAdmin = (u: User) => u.isAdmin || cfg.adminEmails.includes(u.email.toLowerCase());
+  const publicUser = (u: User) => ({ id: u.id, name: u.name, email: u.email, picture: u.picture, isAdmin: isAdmin(u) });
   const app = express();
   app.disable("x-powered-by");
   if (cfg.production) app.set("trust proxy", 1); // behind nginx: use the real client IP for rate limits
   app.use(helmet());
-  app.use(express.json({ limit: "10kb" }));
+  // Webhook signatures are checked against the exact bytes received, so those routes get the raw body.
+  app.use("/api/webhooks", express.raw({ type: "*/*", limit: "1mb" }));
+  app.use(express.json({ limit: "64kb" }));
   app.use(cookieParser());
 
   // Browsers always send Origin on cross-site POSTs. Reject anything not from our own web app.
@@ -92,6 +99,7 @@ export function createApp({ cfg, store, mailer, verifyGoogle }: Deps) {
       res.status(429).json({ error: "too_many_codes" });
       return;
     }
+    if (!mailer.enabled) { res.status(503).json({ error: "email_login_disabled" }); return; }
     const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
     await store.createChallenge(email, hashCode(email, code), CODE_TTL_MIN);
     try {
@@ -148,6 +156,21 @@ export function createApp({ cfg, store, mailer, verifyGoogle }: Deps) {
     res.clearCookie(COOKIE, cookieOptions);
     res.status(204).end();
   });
+
+  /** Loads the signed-in user onto the request, or answers 401. */
+  const requireUser = async (req: Request, res: Response, next: NextFunction) => {
+    const token = req.cookies?.[COOKIE] as string | undefined;
+    if (token) {
+      try {
+        const { sub } = jwt.verify(token, cfg.jwtSecret, { issuer: "hirely" }) as { sub: string };
+        const user = await store.get(sub);
+        if (user) { (req as Request & { user: unknown }).user = publicUser(user); next(); return; }
+      } catch { /* expired or tampered */ }
+    }
+    res.status(401).json({ error: "unauthenticated" });
+  };
+
+  if (product) mountProduct(app, { ...product, cfg, emailLogin: mailer.enabled }, { requireUser, originGuard, limiter });
 
   // Express 5 forwards async errors here, so a DB hiccup returns 500 instead of hanging.
   app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {

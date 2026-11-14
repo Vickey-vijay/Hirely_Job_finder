@@ -4,19 +4,19 @@ import { motion, useReducedMotion, type Variants } from "framer-motion";
 /**
  * Page transition: three coloured panels sweep up to cover the screen on exit
  * and peel away on enter, then content rises in with a small stagger.
- * Colours cycle sage → apricot → dusk so every switch feels like a little moment.
+ * Colours go blue → green → navy so every switch feels like a little moment.
  */
-const COLORS = ["#8fbfae", "#f4b79b", "#8c84d4"];
+const COLORS = ["#1f5fd1", "#0e9f6e", "#0f2742"];
 
 const panel = (i: number): Variants => ({
   initial: { scaleY: 1, originY: 0 },
-  animate: { scaleY: 0, originY: 0, transition: { duration: 0.6, delay: 0.05 + i * 0.08, ease: [0.76, 0, 0.24, 1] } },
-  exit: { scaleY: 1, originY: 1, transition: { duration: 0.5, delay: i * 0.07, ease: [0.76, 0, 0.24, 1] } },
+  animate: { scaleY: 0, originY: 0, transition: { duration: 0.45, delay: 0.03 + i * 0.06, ease: [0.76, 0, 0.24, 1] } },
+  exit: { scaleY: 1, originY: 1, transition: { duration: 0.35, delay: i * 0.05, ease: [0.76, 0, 0.24, 1] } },
 });
 
 const content: Variants = {
   initial: { opacity: 0, y: 28 },
-  animate: { opacity: 1, y: 0, transition: { duration: 0.6, delay: 0.55, ease: [0.22, 1, 0.36, 1] } },
+  animate: { opacity: 1, y: 0, transition: { duration: 0.5, delay: 0.35, ease: [0.22, 1, 0.36, 1] } },
   exit: { opacity: 0, transition: { duration: 0.2 } },
 };
 
@@ -39,7 +39,7 @@ export default function Transition({ children }: { children: ReactNode }) {
 /** Staggered children helper for lists. */
 export const stagger = {
   hidden: {},
-  show: { transition: { staggerChildren: 0.09, delayChildren: 0.7 } },
+  show: { transition: { staggerChildren: 0.09, delayChildren: 0.4 } },
 };
 export const rise: Variants = {
   hidden: { opacity: 0, y: 18 },

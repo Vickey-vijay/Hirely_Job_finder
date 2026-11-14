@@ -1,11 +1,11 @@
 import type { Db } from "./db.js";
 
-export type User = { id: string; email: string; name: string; picture: string | null };
+export type User = { id: string; email: string; name: string; picture: string | null; isAdmin: boolean };
 export type Profile = { sub: string; email: string; name: string; picture?: string };
 export type Challenge = { id: string; codeHash: string; attempts: number };
 
-type UserRow = { id: string; email: string; name: string; picture: string | null };
-const COLS = "id, email, name, picture";
+type UserRow = User;
+const COLS = 'id, email, name, picture, is_admin as "isAdmin"';
 
 export type Store = ReturnType<typeof createStore>;
 

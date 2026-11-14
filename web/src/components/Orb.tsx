@@ -1,6 +1,7 @@
-export default function Orb() {
+/** Pulsing "radar" dot. Pass off to show it paused. */
+export default function Orb({ off = false }: { off?: boolean }) {
   return (
-    <div className="orb-wrap" aria-hidden>
+    <div className={`orb-wrap ${off ? "off" : ""}`} aria-hidden>
       <span className="ring" />
       <span className="ring" />
       <span className="ring" />

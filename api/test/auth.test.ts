@@ -27,7 +27,7 @@ async function start() {
   const app = createApp({
     cfg,
     store: createStore(db),
-    mailer: { async sendLoginCode(to, code) { sent.push({ to, code }); } },
+    mailer: { enabled: true, async sendLoginCode(to, code) { sent.push({ to, code }); }, async send() {} },
     async verifyGoogle(c) {
       if (c !== "valid-credential-0000000000") throw new Error("bad");
       return { sub: "g-1", email: "Asha@Example.com", name: "Asha Rao", picture: "https://x/y.png" };
@@ -52,7 +52,11 @@ test("config rejects missing or weak settings", () => {
   assert.doesNotThrow(() => loadConfig({ ...env, DATABASE_URL: "" }));
   assert.throws(() => loadConfig({ ...env, DATABASE_URL: "", NODE_ENV: "production", SMTP_HOST: "h", SMTP_USER: "u", SMTP_PASS: "p", MAIL_FROM: "a@b.c" }), /DATABASE_URL/);
   assert.throws(() => loadConfig({ ...env, GOOGLE_CLIENT_ID: "nope" }), /GOOGLE_CLIENT_ID/);
-  assert.throws(() => loadConfig({ ...env, NODE_ENV: "production" }), /SMTP_HOST/);
+  assert.throws(() => loadConfig({ ...env, NODE_ENV: "production", SMTP_HOST: "h" }), /SMTP_USER/);
+  assert.doesNotThrow(() => loadConfig({ ...env, NODE_ENV: "production" }));
+  assert.throws(() => loadConfig({ ...env, RAZORPAY_KEY_ID: "rzp_test_1" }), /RAZORPAY_KEY_SECRET/);
+  assert.equal(loadConfig({ ...env, RAZORPAY_KEY_ID: "rzp_test_1", RAZORPAY_KEY_SECRET: "s" }).billingMode, "pass");
+  assert.equal(loadConfig(env).billingMode, "off");
   assert.doesNotThrow(() => loadConfig({ ...env, GOOGLE_CLIENT_ID: "" })); // Google is optional
 });
 

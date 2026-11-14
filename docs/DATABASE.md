@@ -1,46 +1,31 @@
 # Database
 
-PostgreSQL 16. The API applies SQL files from `api/migrations/` automatically on start, in filename order, each in a transaction, and records them in `schema_migrations`. To change the schema, add a new file (`002_something.sql`); never edit an applied one.
+PostgreSQL (15 on the server). The API applies SQL files from `api/migrations/` automatically on start, in filename order, each in a transaction, and records them in `schema_migrations`. To change the schema, add a new file (`003_something.sql`); never edit one that has already been applied on the server.
 
-## Run locally
-**Easiest (default):** leave `DATABASE_URL` empty in `api/.env`. In development the API then uses an embedded Postgres engine (PGlite) stored in `api/data/pgdata/` (git-ignored). No Docker, no install. Delete that folder to reset your local data. This fallback is disabled when `NODE_ENV=production`.
+## On your computer
+Leave `DATABASE_URL` empty in `api/.env`. In development the API uses an embedded Postgres engine (PGlite) stored in `api/data/pgdata/` (git-ignored). No install needed. Delete that folder to reset your local data. This fallback is disabled when `NODE_ENV=production`.
 
-**Real Postgres (closer to production), Windows or Mac with Docker Desktop:**
-```powershell
-docker compose up -d db          # from the repo root
-# api/.env:  DATABASE_URL=postgres://hirely:hirely@localhost:5432/hirely
-```
-Look inside: `docker compose exec db psql -U hirely hirely` then `\dt` and `select * from users;`.
+## On the server
+`sudo -u postgres psql hirely`, then `\dt` to list tables and `\q` to quit. Settings tuned for a small server are in `/etc/postgresql/15/main/conf.d/hirely-small.conf`.
 
-## Tables that exist now (migration 001)
-**users** — one row per person.
-| Column | Notes |
-|---|---|
-| id | uuid, primary key |
-| email | unique, always lowercase |
-| name, picture | from Google, or the part before `@` for email sign-ups |
-| google_sub | Google's stable account id; null for email-only users |
-| email_verified_at | set when Google or an emailed code proves ownership |
-| created_at, last_login_at | timestamps |
+## Tables
+| Table | One row per | Notes |
+|---|---|---|
+| `users` | person | email (unique, lowercase), name, picture, `google_sub`, `is_admin` |
+| `email_challenges` | emailed sign-in code | only a keyed hash of the code is stored; 10-minute expiry, single use |
+| `profiles` | person | phone, WhatsApp consent and when it was given (`opt_in_at`), roles, skills, cities, experience, resume **text** (the file is never stored), alert switches, `got_job_at` |
+| `subscriptions` | purchase | `plan` (starter / plus / pro), `provider` (razorpay_subscription / razorpay_pass / mock), `provider_ref` (Razorpay id), `status` (created / active / halted / cancelled / expired / replaced), `cancel_at_period_end`, period start and end |
+| `payments` | captured payment | Razorpay payment id (unique), amount in paise |
+| `webhook_events` | webhook already handled | makes replays harmless |
+| `sources` | job source | `kind` (greenhouse, lever, ashby, smartrecruiters, recruitee, workable, adzuna, remotive, jobicy, himalayas), `token` (board name or search phrase), `enabled`, `interval_min`, health fields |
+| `jobs` | job opening | company, title, location, url, plain-text description, `active` |
+| `matches` | person + job | `score` 1 to 10, `reasons`, optional AI `why`, `status` (new / applied / dismissed), `feedback`, `notified_at` |
+| `notifications` | alert sent | channel (whatsapp / email), kind (digest / instant), status, error |
+| `tailored_resumes` | match (Pro) | the tailored text |
 
-Signing in with Google and with email codes using the same address lands on **one** account.
+A user is "subscribed" when they have a `subscriptions` row with `status = 'active'` whose period has not ended (auto-renewing plans get a 36-hour grace while the renewal payment is confirmed). The exact rule is `LIVE_SQL` in `api/src/billing.ts`.
 
-**email_challenges** — emailed login codes. Stores a keyed hash (HMAC) of the code, never the code. Expires in 10 minutes, single use, locked after 5 wrong tries, max 3 codes per email per 10 minutes.
-
-## Tables planned (added slice by slice, each as a new migration)
-| Slice | Tables |
-|---|---|
-| Onboarding | `profiles` (phone_e164, phone_verified_at), `preferences` (titles, skills, locations, experience, salary, job types, exclusions, match threshold), `resumes` (storage key, parsed JSON, deleted_at) |
-| Payments | `subscriptions` (status, period start/end, razorpay ids), `payments` (amount in paise, status, invoice), `webhook_events` (idempotency) |
-| Jobs | `sources` (name, type, enabled, last_run, failures, terms_reviewed_at), `scrape_runs`, `jobs` (normalized fields, dedupe_key, first/last seen, is_active) |
-| Matching | `matches` (user_id, job_id, score, reasons; unique per user+job) |
-| WhatsApp | `whatsapp_consent` (opt-in/out with timestamps), `notification_settings` (paused_until, quiet hours, daily cap), `notifications` (provider id, status), `inbound_messages` |
-| Admin | `admin_audit_log` |
-
-Full column lists are in `prd.md` Section 9.3.
+Deleting a user (`delete from users where id = ...`, or the Delete my account button) removes their profile, subscriptions, payments, matches, notifications and tailored resumes through cascading deletes.
 
 ## Backups
-See `docs/VPS_DEPLOY.md` step 10. Rule: a backup you haven't restored once is not a backup.
-
-## Privacy notes (DPDP)
-Resumes and phone numbers are personal data: encrypt at rest, delete on request, and delete a user's data when they delete their account. Build the "delete my account" flow before launch.
+Nightly at 02:40 to `/var/backups/hirely/`, kept 14 days (`deploy/backup.sh`). Restore steps are in `docs/START_HERE.md` section 12. A backup you have not restored once is not a backup.

@@ -1,42 +1,22 @@
 # Hirely Web
 
-React 18 + Vite + TypeScript front end. Minimal UI, animated page transitions.
+React 18 + Vite + TypeScript website. Plain CSS (`src/styles.css`), animations with Framer Motion.
 
-## Run on Windows (PowerShell)
-
-1. Install Node 22 LTS (https://nodejs.org) and Git for Windows.
-2. Keep the project in a path without spaces, for example `C:\dev\Hirely_Job_finder`.
-3. Then:
-
-```powershell
-git config --global core.longpaths true
-git clone https://github.com/Vickey-vijay/Hirely_Job_finder.git
-cd Hirely_Job_finder
-git checkout feat/web-ui
-cd web
+```
 npm install
-npm run dev
+npm run dev        # http://localhost:5173, needs the API running on port 4000
+npm run build      # typecheck and production build to dist/
 ```
 
-Open http://localhost:5173.
-
-## Scripts
-- `npm run dev` — dev server
-- `npm run build` — typecheck and production build to `dist/`
-- `npm run preview` — serve the production build
-
-## Structure
 ```
 src/
-  App.tsx            routes + splash + animated route switching
-  auth.tsx           DEMO auth (localStorage); replaced by Google OAuth later
-  data.ts            demo matches; replaced by API
-  components/        Aurora, Orb, Splash, Transition (curtain), Nav
-  pages/             Landing, Login, Dashboard, Matches, Settings
-  styles.css         palette tokens and styles
+  App.tsx            routes, first-load screen, animated page switching
+  api.ts             every call to the server, with user-facing error messages
+  auth.tsx           sign-in state
+  account.tsx        site settings + the signed-in user's profile and plan
+  components/        Aurora, Orb, Splash, Transition, Nav, ui.tsx (score ring, chips input, plan cards, footer...)
+  pages/             Landing, Login, Onboarding, Plans, Dashboard, Matches, Tailored, Settings, Legal, Admin
+  styles.css         colours and all styles (change the palette at the top)
 ```
 
-## Deploy
-`vercel.json` rewrites all routes to `index.html` for the SPA. Import the repo in Vercel (root directory `web`), or run `npx vercel` from this folder. Not deployed yet.
-
-See `../docs/DEVLOG.md` and `../docs/DECISIONS.md`.
+There is no `.env` for the website. Settings such as the Google client ID and plan prices come from the server (`/api/public/config`). Publishing is done by `deploy/push.sh` from the repo root.
