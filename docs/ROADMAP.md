@@ -8,7 +8,7 @@ Last updated: 2026-11-15. What to do next, step by step, is in [`START_HERE.md`]
 | Google and email-code sign-in, 30-day sessions | `api/src/app.ts` | automated tests (fake Google) |
 | Set-up steps: resume upload and reading, roles, skills, cities, WhatsApp consent | `web/src/pages/Onboarding.tsx`, `api/src/resume.ts` | automated + by hand locally |
 | Three plans, Razorpay subscriptions, one-time pass fallback, test mode, stop renewal, upgrade, "I got a job" | `api/src/billing.ts`, `plans.ts` | automated (fake Razorpay) + test-mode purchase by hand |
-| Job collection from 10 kinds of public source, 58 company boards seeded | `api/src/sources.ts`, `seed/sources.json` | live on the server |
+| Job collection from company career boards (6 hiring systems) and Adzuna; 58 boards seeded. Remote-job feed connectors exist but are off pending their terms | `api/src/sources.ts`, `seed/sources.json` | live on the server |
 | 1 to 10 scoring with reasons; free preview before payment | `api/src/match.ts` | automated + real jobs |
 | Alerts: daily digests by plan, instant alerts on Pro, email, WhatsApp template + STOP / PAUSE / RESUME / MORE | `api/src/notify.ts` | automated (fake WhatsApp) |
 | Optional AI: resume reading, score refinement, Pro tailored resume | `api/src/llm.ts` | not yet run against the real service |

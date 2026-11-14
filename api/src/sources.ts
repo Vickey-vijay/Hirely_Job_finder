@@ -137,7 +137,7 @@ const remotive: Connector = async () => {
 
 const jobicy: Connector = async () => {
   type J = { id: number; url: string; jobTitle: string; companyName: string; jobGeo?: string; jobDescription?: string; jobExcerpt?: string; pubDate?: string };
-  const d = await getJson<{ jobs: J[] }>("https://jobicy.com/api/v2/remote-jobs?count=50&geo=india");
+  const d = await getJson<{ jobs: J[] }>("https://jobicy.com/api/v2/remote-jobs?count=50");
   return (d.jobs ?? []).map((j) => ({ externalId: String(j.id), company: htmlToText(j.companyName, 120), title: htmlToText(j.jobTitle, 200), location: `Remote (${j.jobGeo || "India"})`, remote: true, url: j.url, description: htmlToText(j.jobDescription ?? j.jobExcerpt), postedAt: date(j.pubDate) }));
 };
 

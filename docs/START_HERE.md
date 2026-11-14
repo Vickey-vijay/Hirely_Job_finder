@@ -16,7 +16,7 @@ Last updated: 15 November 2026
 | Piece | State today | What switches it on |
 |---|---|---|
 | Website (landing, sign-up steps, plans, dashboard, matches, settings, policies, admin) | Live over HTTPS | done |
-| Job collection from 58 company career boards + 3 remote-job feeds (India jobs only) | Running on the server | done |
+| Job collection from 58 company career boards (India jobs only) | Running on the server | done |
 | Matching and 1 to 10 scoring with reasons | Running | done |
 | Sign-in | **Off: nobody can sign in yet** | step 3 (Google) and/or step 5 (email) |
 | Payments | Test mode: a "Test mode" banner shows and no money moves | step 7 (Razorpay) |
@@ -301,7 +301,7 @@ Do **not** use unofficial WhatsApp tools (anything that scans a QR code and auto
 - [ ] Refund and cancellation rules visible before payment (already on the plans page with a tick box; do not remove it)
 - [ ] You answer complaints within 48 hours and settle them within a month (Consumer Protection (E-Commerce) Rules, 2020). You are the grievance officer
 - [ ] Data protection (Digital Personal Data Protection Act, 2023; Rules notified November 2025, with most duties applying from about May 2027 **(confirm)**). Already built: consent tick box and timestamp for WhatsApp, account deletion that erases everything, resume file never stored (text only), a privacy notice listing every company that touches the data. Your duties: keep the server patched, do not share the database with anyone, tell users and the Data Protection Board if there is a breach
-- [ ] Job sources: only public company career feeds and licensed APIs are used. Never add scraping of LinkedIn, Naukri or Indeed; their terms forbid it. Adzuna's terms checked (step 6)
+- [ ] Job sources: only public company career feeds and licensed APIs are used. Connectors for three remote-job feeds (Remotive, Jobicy, Himalayas) exist but are switched off: Remotive's API terms forbid showing its listings to collect sign-ups, and the other two are unchecked. Do not add them in `/admin` without reading their terms and getting permission. Never add scraping of LinkedIn, Naukri or Indeed; their terms forbid it. Adzuna's terms checked (step 6)
 - [ ] Never promise a job or a number of matches in an Instagram post. Say what the product does: "only the jobs that fit you, scored 1 to 10". Influencer posts must be marked as paid partnerships (ASCI influencer guidelines)
 - [ ] About "we make no profit": the note on the landing page is true only while it is true. If margins improve, soften or remove it. Voluntary support through UPI (set `SUPPORT_UPI=yourupi@bank`) is ordinary income; declare it
 

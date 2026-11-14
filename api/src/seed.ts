@@ -5,12 +5,13 @@ import { SOURCE_KINDS } from "./sources.js";
 
 type Seed = { ats: string; token: string; company: string };
 
-/** Sources that are not tied to one company. */
-const AGGREGATORS: (Seed & { interval: number })[] = [
-  { ats: "remotive", token: "all", company: "Remotive", interval: 360 }, // their terms ask for at most a few calls a day
-  { ats: "jobicy", token: "india", company: "Jobicy", interval: 360 },
-  { ats: "himalayas", token: "latest", company: "Himalayas", interval: 120 },
-];
+/**
+ * Remote-job feeds (Remotive, Jobicy, Himalayas) have connectors in sources.ts but are NOT switched on by default:
+ * Remotive's API terms forbid showing its listings to collect sign-ups and limit calls to about 4 a day,
+ * Jobicy has no India filter, and Himalayas' terms have not been checked. Read each feed's terms and get
+ * permission before adding one in the admin page.
+ */
+const AGGREGATORS: (Seed & { interval: number })[] = [];
 
 /**
  * Adds the starting list of job sources (api/seed/sources.json: company boards checked to have India jobs).

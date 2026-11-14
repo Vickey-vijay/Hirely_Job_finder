@@ -40,4 +40,4 @@ bash deploy/push.sh
 ```
 
 ## Status (15 Nov 2026)
-Deployed in test mode at https://hirely.35-226-195-159.sslip.io. Collecting India jobs from 58 company boards and 3 remote-job feeds. Sign-in, real payments, email, WhatsApp, Adzuna and AI are built and unit-tested but switched off until their keys are added (see the guide). None of those six has been run against the real service yet.
+Deployed in test mode at https://hirely.35-226-195-159.sslip.io. Collecting India jobs from 58 company boards. Sign-in, real payments, email, WhatsApp, Adzuna and AI are built and unit-tested but switched off until their keys are added (see the guide). None of those six has been run against the real service yet.
