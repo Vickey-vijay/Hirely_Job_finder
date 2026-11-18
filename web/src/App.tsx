@@ -16,6 +16,7 @@ import Tailored from "./pages/Tailored";
 import Settings from "./pages/Settings";
 import Admin from "./pages/Admin";
 import { Contact, Privacy, Refunds, Terms } from "./pages/Legal";
+import JobStory from "./components/JobStory";
 
 /** Signed-in pages. People who have not told us what they want yet are sent to the set-up steps first. */
 function Private({ children, setup = false }: { children: JSX.Element; setup?: boolean }) {
@@ -36,6 +37,15 @@ export default function App() {
   const { user } = useAuth();
   const { config } = useAccount();
   const showNav = !!user && APP_PATHS.some((p) => location.pathname === p);
+
+  // /story is the recording page: the story alone, centred, no splash or navigation.
+  if (location.pathname === "/story") {
+    return (
+      <main className="story-stage">
+        <JobStory bare />
+      </main>
+    );
+  }
 
   return (
     <>

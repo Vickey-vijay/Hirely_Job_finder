@@ -11,11 +11,11 @@ export function Brand({ to = "/" }: { to?: string }) {
 export function ScoreRing({ score, size = 60 }: { score: number; size?: number }) {
   const r = size / 2 - 5;
   const c = 2 * Math.PI * r;
-  const color = score >= 8 ? "var(--green)" : score >= 6 ? "var(--blue)" : "#93a3b8";
+  const color = score >= 8 ? "var(--green)" : score >= 6 ? "var(--blue)" : "var(--cross-x)";
   return (
     <div className="score" style={{ width: size, height: size }} role="img" aria-label={`Fit score ${score} out of 10`}>
       <svg width={size} height={size}>
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#e3e9f2" strokeWidth="5" />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--progress)" strokeWidth="5" />
         <motion.circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth="5" strokeLinecap="round"
           strokeDasharray={c} initial={{ strokeDashoffset: c }} whileInView={{ strokeDashoffset: c * (1 - score / 10) }}
           viewport={{ once: true }} transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }} />

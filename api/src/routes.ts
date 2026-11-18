@@ -6,7 +6,8 @@ import type { Billing, SubRow } from "./billing.js";
 import type { Llm } from "./llm.js";
 import type { Notifier } from "./notify.js";
 import type { Pipeline } from "./pipeline.js";
-import { isPlanId, PLAN_ORDER, PLANS, STORE_MIN_SCORE } from "./plans.js";
+import { clampAlertsPerDay, isPlanId, PLAN_ORDER, PLANS, STORE_MIN_SCORE } from "./plans.js";
+import { buildResumeDocx, resumeFileName } from "./resume-docx.js";
 import { extractResumeText, guessFromResume, MAX_RESUME_BYTES } from "./resume.js";
 import { SOURCE_KINDS } from "./sources.js";
 import { CITIES, DOMAINS } from "./taxonomy.js";
@@ -41,7 +42,8 @@ export function mountProduct(app: Express, deps: ProductDeps, g: Guards) {
   const requireAdmin: RequestHandler = (req, res, next) => { if (U(req).isAdmin) next(); else res.status(403).json({ error: "forbidden" }); };
   const write = [g.originGuard, g.requireUser];
 
-  const PROFILE_COLS = `phone, whatsapp_opt_in as "whatsappOptIn", email_alerts as "emailAlerts", headline, domain, roles, skills, locations, remote_ok as "remoteOk",
+  const PROFILE_COLS = `phone, whatsapp_opt_in as "whatsappOptIn", email_instant as "emailInstant", email_digest as "emailDigest", max_alerts_per_day as "maxAlertsPerDay",
+    telegram_chat_id is not null as "telegramConnected", telegram_alerts as "telegramAlerts", headline, domain, roles, skills, locations, remote_ok as "remoteOk",
     experience_years::float8 as "experienceYears", resume_filename as "resumeFilename", resume_uploaded_at as "resumeUploadedAt", (length(resume_text) > 0) as "hasResume",
     alerts_paused as "alertsPaused", got_job_at as "gotJobAt", onboarded_at as "onboardedAt"`;
   const ensureProfile = (userId: string) => db.query("insert into profiles (user_id) values ($1) on conflict do nothing", [userId]);
@@ -60,6 +62,7 @@ export function mountProduct(app: Express, deps: ProductDeps, g: Guards) {
       googleClientId: cfg.googleClientId,
       emailLogin: deps.emailLogin,
       whatsapp: notifier.whatsappEnabled,
+      telegram: { enabled: notifier.telegram.enabled, botUsername: notifier.telegram.botUsername },
       ai: !!llm,
       business: cfg.business,
       domains: DOMAINS, cities: CITIES,
@@ -96,6 +99,7 @@ export function mountProduct(app: Express, deps: ProductDeps, g: Guards) {
          onboarded_at = coalesce(onboarded_at, now()), updated_at = now() where user_id = $1`,
       [u.id, phone, optIn, String(b.headline ?? "").slice(0, 120), String(b.domain ?? "").slice(0, 60), roles, skills, locations, b.remoteOk !== false, years]);
     if (typeof b.name === "string" && b.name.trim().length >= 2) await db.query("update users set name = $2 where id = $1", [u.id, b.name.trim().slice(0, 80)]);
+    if (b.maxAlertsPerDay !== undefined) await db.query("update profiles set max_alerts_per_day = $2 where user_id = $1", [u.id, clampAlertsPerDay(b.maxAlertsPerDay)]);
     // A changed profile makes old unsent matches stale: drop them and score again.
     await db.query("delete from matches where user_id = $1 and notified_at is null and status = 'new'", [u.id]);
     void pipeline.backfillUser(u.id).catch((e) => console.error("backfill failed:", e));
@@ -121,12 +125,16 @@ export function mountProduct(app: Express, deps: ProductDeps, g: Guards) {
     res.status(204).end();
   });
 
+  /** Settings switches and the daily limit. The limit is clamped to 1..10 on the server. */
   app.patch("/api/account/alerts", ...write, async (req, res) => {
-    const b = (req.body ?? {}) as { paused?: unknown; whatsappOptIn?: unknown; emailAlerts?: unknown };
+    const b = (req.body ?? {}) as { paused?: unknown; whatsappOptIn?: unknown; emailInstant?: unknown; emailDigest?: unknown; telegramAlerts?: unknown; maxAlertsPerDay?: unknown };
     const u = U(req);
     await ensureProfile(u.id);
     if (typeof b.paused === "boolean") await db.query("update profiles set alerts_paused = $2 where user_id = $1", [u.id, b.paused]);
-    if (typeof b.emailAlerts === "boolean") await db.query("update profiles set email_alerts = $2 where user_id = $1", [u.id, b.emailAlerts]);
+    if (typeof b.emailInstant === "boolean") await db.query("update profiles set email_instant = $2 where user_id = $1", [u.id, b.emailInstant]);
+    if (typeof b.emailDigest === "boolean") await db.query("update profiles set email_digest = $2 where user_id = $1", [u.id, b.emailDigest]);
+    if (typeof b.telegramAlerts === "boolean") await db.query("update profiles set telegram_alerts = $2 where user_id = $1", [u.id, b.telegramAlerts]);
+    if (b.maxAlertsPerDay !== undefined) await db.query("update profiles set max_alerts_per_day = $2 where user_id = $1", [u.id, clampAlertsPerDay(b.maxAlertsPerDay)]);
     if (typeof b.whatsappOptIn === "boolean") await db.query("update profiles set whatsapp_opt_in = ($2 and phone is not null), opt_in_at = case when $2 and phone is not null then coalesce(opt_in_at, now()) else null end where user_id = $1", [u.id, b.whatsappOptIn]);
     res.json({ profile: await one(`select ${PROFILE_COLS} from profiles where user_id = $1`, [u.id]) });
   });
@@ -144,6 +152,18 @@ export function mountProduct(app: Express, deps: ProductDeps, g: Guards) {
   app.post("/api/account/looking-again", ...write, async (req, res) => {
     await db.query("update profiles set got_job_at = null, alerts_paused = false where user_id = $1", [U(req).id]);
     res.status(204).end();
+  });
+
+  /** Telegram: a one-time link (30 minutes). The user opens it, presses Start, and the webhook stores their chat. */
+  app.post("/api/account/telegram/link", ...write, g.limiter, async (req, res) => {
+    if (!notifier.telegram.enabled) { res.status(503).json({ error: "telegram_disabled" }); return; }
+    await ensureProfile(U(req).id);
+    res.json(await notifier.telegram.createLink(U(req).id));
+  });
+  app.post("/api/account/telegram/disconnect", ...write, async (req, res) => {
+    await ensureProfile(U(req).id);
+    await notifier.telegram.disconnect(U(req).id);
+    res.json({ profile: await one(`select ${PROFILE_COLS} from profiles where user_id = $1`, [U(req).id]) });
   });
 
   /** Deletes the account and everything stored about the person (DPDP: right to erasure). */
@@ -191,6 +211,20 @@ export function mountProduct(app: Express, deps: ProductDeps, g: Guards) {
       `select t.content, t.created_at, j.title, j.company, j.url from tailored_resumes t join matches m on m.id = t.match_id join jobs j on j.id = m.job_id where t.match_id = $1 and t.user_id = $2`, [req.params.id, U(req).id]);
     if (!row) { res.status(404).json({ error: "not_found" }); return; }
     res.json({ content: row.content, createdAt: row.created_at, title: row.title, company: row.company, url: row.url });
+  });
+
+  /** The tailored resume as a Word file. Only the owner of the match can download it. */
+  app.get("/api/matches/:id/tailor.docx", g.requireUser, async (req, res) => {
+    const matchId = String(req.params.id);
+    if (!/^[0-9a-f-]{36}$/i.test(matchId)) { res.status(404).json({ error: "not_found" }); return; }
+    const row = await one<{ content: string; title: string; company: string }>(
+      "select t.content, j.title, j.company from tailored_resumes t join matches m on m.id = t.match_id join jobs j on j.id = m.job_id where t.match_id = $1 and t.user_id = $2",
+      [matchId, U(req).id]);
+    if (!row) { res.status(404).json({ error: "not_found" }); return; }
+    const file = await buildResumeDocx(row.content);
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+    res.setHeader("Content-Disposition", `attachment; filename="${resumeFileName(row.company, row.title)}"`);
+    res.send(file);
   });
 
   /** Pro plan: writes a resume aimed at this one job, from the user's own resume only. */
@@ -262,6 +296,11 @@ export function mountProduct(app: Express, deps: ProductDeps, g: Guards) {
   app.post("/api/webhooks/razorpay", async (req, res) => {
     const ok = Buffer.isBuffer(req.body) && (await billing.handleWebhook(req.body, req.get("x-razorpay-signature") ?? "", req.get("x-razorpay-event-id") ?? ""));
     res.status(ok ? 200 : 400).json({ ok });
+  });
+  // Telegram checks this secret header itself; the handler compares it in constant time and answers 200 when done.
+  app.post("/api/webhooks/telegram", async (req, res) => {
+    const status = await notifier.telegram.handleWebhook(req.get("x-telegram-bot-api-secret-token"), Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0));
+    res.status(status).end();
   });
   app.get("/api/webhooks/whatsapp", (req, res) => {
     const c = notifier.verifyWebhook(req.query["hub.mode"], req.query["hub.verify_token"], req.query["hub.challenge"]);

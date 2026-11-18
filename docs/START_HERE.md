@@ -22,10 +22,11 @@ Last updated: 15 November 2026
 | Payments | Test mode: a "Test mode" banner shows and no money moves | step 7 (Razorpay) |
 | Email alerts | Off | step 5 |
 | WhatsApp alerts | Off | step 8 |
+| Telegram alerts | Off until `TELEGRAM_BOT_TOKEN` is set | step 8g (free bot) |
 | Non-tech jobs (sales, accounts, nursing, teaching...) | **Thin.** The 58 boards are mostly tech companies | step 6 (Adzuna keys). Do this before any marketing |
 | AI score refinement and Pro tailored resumes | Off | step 9 (Anthropic key) |
 
-What I tested: 16 automated tests pass (sign-in, payment signature checks, renewal webhooks, replayed webhooks, cancel at period end, matching, alert timing, WhatsApp STOP). I also clicked through sign-in, profile set-up, a test-mode purchase, the dashboard and matches on my own machine with real collected jobs, and confirmed the live site answers over HTTPS.
+What I tested: 34 automated tests pass (sign-in, payment signature checks, renewal webhooks, replayed webhooks, cancel at period end, matching, the 09:00 summary, the daily alert limit, Telegram linking and the webhook secret, the Pro WhatsApp cap of 5 a day, tailored Word files, WhatsApp STOP). I also clicked through sign-in, profile set-up, a test-mode purchase, the dashboard and matches on my own machine with real collected jobs, and confirmed the live site answers over HTTPS.
 
 What I could **not** test, because it needs accounts only you can open: a real Google sign-in, a real Razorpay payment, a real WhatsApp message, real email delivery, Adzuna, and the AI features. The code for each is written and unit-tested against fake versions of those services. Expect to fix a small thing or two the first time each one meets the real service; section 14 tells you where to look.
 
@@ -189,8 +190,8 @@ You do not need a company. A **sole proprietorship** is just you trading under a
 2. **Subscriptions** → **Plans** → create three plans, billing frequency monthly:
    - `Hirely Starter`, ₹99
    - `Hirely Plus`, ₹199
-   - `Hirely Pro`, ₹499
-   Copy each Plan ID (starts with `plan_`).
+   - `Hirely Pro`, ₹299
+   Copy each Plan ID (starts with `plan_`). If you already made a Pro plan at ₹499, make a new one at ₹299: a Razorpay plan's price cannot be changed. Use the new ID for `RAZORPAY_PLAN_PRO`. Existing Pro subscribers keep their old price until they cancel.
 3. **Account & Settings** → **Webhooks** → Add:
    - URL: `https://yourdomain.in/api/webhooks/razorpay`
    - Secret: make up a long random string and keep it
@@ -260,7 +261,7 @@ WHATSAPP_APP_SECRET=(App secret)
 - Verify token: that value
 - Subscribe to the **messages** field.
 
-Test: set your own number in your Hirely profile with WhatsApp ticked, have a plan, and wait for the next alert slot (09:30, 13:30 or 18:30 India time depending on plan). Reply `MORE`, `PAUSE`, `RESUME` and `STOP` and check each answer.
+Test: set your own number in your Hirely profile with WhatsApp ticked, have a plan, and wait for the summary at 09:00 India time the next morning (it lists yesterday's matches). On Pro, a new strong match also goes out on WhatsApp straight away. Reply `MORE`, `PAUSE`, `RESUME` and `STOP` and check each answer.
 
 ### 8e. Business verification
 Meta Business settings → **Security centre** → Start verification. Upload documents showing your business name and address; guides for India commonly list the Udyam certificate, GST certificate, a bank statement or a utility bill **(confirm in the upload screen; Meta's own list was not readable when I checked)**. The name must match letter for letter across the portfolio, the documents and the website. Until verified (or until you build a sending history) a new account is limited to **250 different people per 24 hours**; the next steps are 2,000, 10,000 and 100,000.
@@ -268,17 +269,32 @@ Meta Business settings → **Security centre** → Start verification. Upload do
 ### 8f. What WhatsApp costs, and how the product keeps it down
 Meta charges per delivered template message. Reported India rates in 2026: about **₹0.115 for Utility and ₹0.86 for Marketing** per message **(confirm on Meta's rate card; I could not read the official figures)**. Messages you send as a normal reply within 24 hours of the customer writing to you are much cheaper or free within a monthly allowance **(confirm)**.
 
-| Plan | Alerts a day | Worst case a month if Marketing | If Utility |
+| Plan | WhatsApp messages a day | Worst case a month if Marketing | If Utility |
 |---|---|---|---|
-| Starter ₹99 | 1 | about ₹26 | about ₹3.50 |
-| Plus ₹199 | 2 | about ₹52 | about ₹7 |
-| Pro ₹499 | 3 + up to 2 instant | about ₹130 | about ₹17 |
+| Starter ₹99 | 1 summary | about ₹26 | about ₹3.50 |
+| Plus ₹199 | 1 summary | about ₹26 | about ₹3.50 |
+| Pro ₹299 | 1 summary + up to 5 instant | about ₹155 | about ₹21 |
 
-How the code limits cost: one short template per alert slot (never one per job), nothing sent when there is no match scoring 6 or more, and the "Reply MORE" button so the full list goes out as a cheap reply message. Email and the dashboard always work and cost almost nothing.
+How the code limits cost: one short template for the morning summary (never one per job), Pro instant WhatsApp capped at `WHATSAPP_INSTANT_MAX_PER_DAY` (5) and never more than the user's daily limit, nothing sent when there is no match scoring 6 or more, and the "Reply MORE" button so the full list goes out as a cheap reply message. Email, Telegram (free) and the dashboard cost almost nothing.
 
 Do **not** use unofficial WhatsApp tools (anything that scans a QR code and automates WhatsApp Web) for customers. It breaks WhatsApp's terms and numbers get banned permanently.
 
 ---
+
+### 8g. Telegram bot (free, about 10 minutes)
+Telegram costs nothing per message, so it is the cheap instant channel for every plan. Nothing else needs buying.
+1. In Telegram, open **@BotFather**, send `/newbot`, and choose a display name and a username that ends in `bot`. BotFather replies with a **token** (it looks like `123456:ABC...`). Keep it private.
+2. On the server, edit `/srv/hirely/api/.env` and set the three values (see section 3b for how to edit the file):
+   ```
+   TELEGRAM_BOT_TOKEN=(the token from BotFather)
+   TELEGRAM_BOT_USERNAME=(the bot's username, without the @)
+   TELEGRAM_WEBHOOK_SECRET=(random, 16 or more letters, digits, _ or -)
+   ```
+   For the secret, run `node -e "console.log(require('crypto').randomBytes(24).toString('base64url'))"` and paste the output.
+3. Restart the app: `sudo systemctl restart hirely-api`. The log should show `telegram: webhook set to https://your-domain/api/webhooks/telegram`. If it says it could not set the webhook, check that `APP_URL` is your public HTTPS address.
+4. Test: sign in, open **Settings**, tap **Connect Telegram**, and press **Start** in the chat that opens. The page changes to "Connected". Then ask someone to match a job, or wait for the next match, and check the alert arrives.
+
+If `TELEGRAM_BOT_TOKEN` is empty, Telegram is switched off everywhere and the site hides it. Connecting uses a link that expires after 30 minutes. A user who blocks the bot is disconnected automatically.
 
 ## 9. AI: smarter scores and the Pro tailored resume (15 minutes)
 
@@ -386,7 +402,7 @@ Open http://localhost:5173. On your PC, sign-in codes are printed in the first t
 Edit `api/src/plans.ts` (prices are in paise: 9900 is ₹99), create matching new plans in Razorpay (a Razorpay plan's price cannot be edited), put the new plan IDs in `.env`, run `bash deploy/push.sh`. Existing subscribers stay on their old price until they cancel. Email them 15 days before any increase, as the Terms promise.
 
 ### Changing alert times, number of alerts, or the score threshold
-`api/src/plans.ts`: `DIGEST_SLOTS_IST` (times, in minutes after midnight India time), `digestsPerDay` in each plan, `NOTIFY_MIN_SCORE`.
+`api/src/plans.ts`: `DIGEST_TIME_IST_MIN` (the morning summary time, 540 = 09:00 India time), `NOTIFY_MIN_SCORE` (instant alerts, 6), `TAILOR_MIN_SCORE` (Pro resumes, 7), `ALERTS_PER_DAY_MIN` / `ALERTS_PER_DAY_MAX` / `ALERTS_PER_DAY_DEFAULT` (the daily limit, 1 to 10, default 5), `WHATSAPP_INSTANT_MAX_PER_DAY` (Pro WhatsApp, 5). Each WhatsApp message costs money, so raise that last one only on purpose.
 
 ### Refunding one of the allowed cases
 Razorpay dashboard → Payments → find the payment ID (the customer sees it in Settings) → Refund. Then stop their renewal if it is still on: Subscriptions → find it → Cancel.
@@ -464,11 +480,11 @@ For a code problem you cannot solve, the places to read are short: `api/src/bill
 | Decision | Why | To change it |
 |---|---|---|
 | "No refund + stop renewal any time" instead of "cannot cancel" | Section 2b | Policy text in `web/src/pages/Legal.tsx`. I advise against tightening it |
-| Alerts as 1 to 3 digests a day, not a message per job | WhatsApp cost and Meta's per-user limits on business messages | `api/src/plans.ts` |
+| One WhatsApp summary a day at 09:00, and instant alerts capped by a daily limit the user sets (1 to 10, default 5) | WhatsApp cost and Meta's per-user limits on business messages. Each job counts once across channels | `api/src/plans.ts`, `api/src/notify.ts` |
 | Each source checked every 20 minutes or so, not every minute | Company boards rarely change within minutes, and hammering them is abusive and gets you blocked. The worker still wakes every minute and rotates through sources | `interval_min` on each row of the `sources` table |
 | Only India jobs stored | Your customers are in India; it keeps the small server light | `isInIndia` in `api/src/sources.ts` |
 | Rules-based scoring first, AI as an optional second opinion | Works with no AI bill, and every score has reasons you can explain to a customer | `api/src/match.ts` |
-| Tailored resume written when the user taps the button, not for every alert | Same promise at a fraction of the cost; capped at 5 a day | `tailorPerDay` in `api/src/plans.ts` |
+| Pro tailored resume written for strong matches (7+), up to 5 a day, sent as a Word file | Each one is a paid AI call, so the daily cap keeps the cost known | `tailorPerDay` in `api/src/plans.ts`, `tailorStrong` in `api/src/pipeline.ts` |
 | Upgrade replaces the old plan at once, no credit for unused days | UPI Autopay subscriptions cannot be switched in place; shown clearly before payment | `api/src/billing.ts` |
 | Resume file is not kept, only its text | Less personal data to protect | `api/src/resume.ts` |
 | PostgreSQL kept (tuned small), cheapest AI model as default | Your existing code and tests already used PostgreSQL; cost | `deploy/setup-server.sh`, `LLM_MODEL` in `.env` |

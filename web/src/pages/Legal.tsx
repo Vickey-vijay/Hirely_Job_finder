@@ -44,7 +44,7 @@ export function Terms() {
   return (
     <Shell title="Terms of Service">
       <h2>1. What {b.name} is</h2>
-      <p>{b.name} is a paid job-alert service. You tell us the kind of job you want; we collect job openings from public sources, score how well each one fits your profile, and send you the ones that fit by WhatsApp, email and on your dashboard. On the Pro plan we also prepare a version of your resume written for a specific job.</p>
+      <p>{b.name} is a paid job-alert service. You tell us the kind of job you want; we collect job openings from public sources, score how well each one fits your profile, and send you the ones that fit by email, Telegram, WhatsApp and on your dashboard. On the Pro plan we also write a resume for each strong match and send it to you as a Word file.</p>
       <h2>2. What we do not promise</h2>
       <ul>
         <li>We are not an employer or a recruitment agency. We do not guarantee an interview, a job offer or a minimum number of matches.</li>
@@ -55,12 +55,12 @@ export function Terms() {
       <h2>3. Your account</h2>
       <p>You must be 18 or older and give accurate information. One account is for one person. Keep access to your email and Google account safe, because they are how you sign in.</p>
       <h2>4. Plans and price</h2>
-      <ul>{b.plans.map((p) => <li key={p.id}><b>{p.name}</b>: {rupees(p.pricePaise)} per month. {p.features.slice(0, 2).join(". ")}.</li>)}</ul>
+      <ul>{b.plans.map((p) => <li key={p.id}><b>{p.name}</b>: {rupees(p.pricePaise)} per month. {p.features.join(". ")}.</li>)}</ul>
       <p>Prices include applicable taxes. If we change a price we will tell you by email at least 15 days before it applies to your next payment.</p>
       <h2>5. Payment, renewal and cancellation</h2>
       <p>Payments are handled by Razorpay. On a monthly plan you approve an automatic payment (UPI Autopay or card mandate) once, and the plan fee is collected each month until renewal is turned off. You can turn off renewal at any time in Settings; you can also cancel the mandate from your UPI or banking app. Full details are in our <Link className="link" to="/refunds">Refund and Cancellation Policy</Link>, which is part of these terms.</p>
       <h2>6. Messages</h2>
-      <p>We send WhatsApp messages only if you switch them on, and only about your job matches and your account. Reply STOP to end them, or PAUSE to pause.</p>
+      <p>We send WhatsApp messages only if you switch them on, and only about your job matches and your account. Reply STOP to end them, or PAUSE to pause. Telegram messages reach you only after you connect our bot yourself, and you can disconnect in Settings. You set how many instant alerts you get a day (1 to 10) in Settings; the 9 AM summary is separate.</p>
       <h2>7. Acceptable use</h2>
       <p>Do not resell the alerts, copy our data in bulk, share your account, or try to break or overload the service. We may suspend an account that does.</p>
       <h2>8. Liability</h2>
@@ -82,6 +82,7 @@ export function Privacy() {
       <ul>
         <li><b>Name, email and profile photo</b> (from Google sign-in or the email you type): to create your account and sign you in.</li>
         <li><b>Mobile number</b>: only to send the WhatsApp alerts you asked for.</li>
+        <li><b>Telegram chat ID</b>: the chat number Telegram gives us when you connect our bot, used only to send the alerts you asked for. Disconnecting in Settings deletes it.</li>
         <li><b>Job preferences</b> (roles, skills, cities, years of experience) and <b>the text of your resume</b>: to match jobs to you and, on Pro, to write tailored resumes. We store the extracted text only, not the uploaded file.</li>
         <li><b>Activity</b> (matches sent, jobs you marked as applied or hidden, your feedback): to improve your matches.</li>
         <li><b>Payment records</b> (plan, amount, date, payment ID): to give you access and keep accounts. Card, UPI and bank details are entered on Razorpay's pages and never reach our servers.</li>
@@ -91,6 +92,7 @@ export function Privacy() {
       <ul>
         <li><b>Razorpay</b>: payments.</li>
         <li><b>Meta (WhatsApp Business Platform)</b>: delivery of WhatsApp alerts to your number.</li>
+        <li><b>Telegram (Bot API)</b>: delivery of Telegram alerts and resume files to your chat.</li>
         <li><b>Our email delivery provider</b>: sign-in codes and email alerts.</li>
         <li><b>Anthropic (Claude AI)</b>: when AI features are on, your job preferences and resume text are sent to it to score matches and write tailored resumes. It processes them to return the result to us.</li>
         <li><b>Our hosting provider</b>: the servers where the service runs. Some of these providers process data outside India.</li>

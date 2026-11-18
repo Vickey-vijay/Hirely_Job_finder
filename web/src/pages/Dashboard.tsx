@@ -31,7 +31,7 @@ export default function Dashboard() {
           <Brand to="/dashboard" />
           <div className="row-gap">
             {user?.isAdmin && <Link to="/admin" className="btn soft sm">Admin</Link>}
-            {user?.picture && <img src={user.picture} alt="" width={36} height={36} referrerPolicy="no-referrer" style={{ borderRadius: "50%", border: "2px solid #fff" }} />}
+            {user?.picture && <img src={user.picture} alt="" width={36} height={36} referrerPolicy="no-referrer" style={{ borderRadius: "50%", border: "2px solid var(--paper)" }} />}
           </div>
         </header>
 
@@ -70,7 +70,9 @@ export default function Dashboard() {
             <motion.div variants={rise} className="row-gap small" style={{ marginBottom: 18 }}>
               <span className="badge blue">{sub.planName} plan</span>
               <span className={`badge ${p?.whatsappOptIn && config?.whatsapp ? "" : "grey"}`}>WhatsApp {p?.whatsappOptIn ? (config?.whatsapp ? "on" : "starting soon") : "off"}</span>
-              <span className={`badge ${p?.emailAlerts ? "" : "grey"}`}>Email {p?.emailAlerts ? "on" : "off"}</span>
+              <span className={`badge ${p?.emailInstant ? "" : "grey"}`}>Email {p?.emailInstant ? "on" : "off"}</span>
+              {config?.telegram.enabled && <span className={`badge ${p?.telegramConnected && p.telegramAlerts ? "" : "grey"}`}>Telegram {p?.telegramConnected ? (p.telegramAlerts ? "on" : "paused") : "not connected"}</span>}
+              <span className="badge grey">Up to {p?.maxAlertsPerDay ?? 5} a day</span>
               {sub.cancelAtPeriodEnd && <span className="badge amber">Renewal off</span>}
             </motion.div>
           )}

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { api, fmtDate, rupees } from "../api";
+import { api, ALERTS_MAX, ALERTS_MIN, fmtDate, rupees } from "../api";
 import { useAuth } from "../auth";
 import { useAccount } from "../account";
 import Transition from "../components/Transition";
@@ -20,8 +20,20 @@ export default function Settings() {
   const [payments, setPayments] = useState<{ id: string; amountPaise: number; status: string; at: string }[]>([]);
   const p = account?.profile;
   const sub = account?.subscription ?? null;
+  const [limit, setLimit] = useState(p?.maxAlertsPerDay ?? 5);
+  const [linking, setLinking] = useState(false);
 
   useEffect(() => { api.billing().then((b) => setPayments(b.payments)).catch(() => {}); }, [sub?.status, sub?.plan]);
+  useEffect(() => { if (p) setLimit(p.maxAlertsPerDay); }, [p?.maxAlertsPerDay]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // After "Connect Telegram", check every few seconds until the user presses Start in Telegram (stops after 2 minutes).
+  useEffect(() => {
+    if (!linking) return;
+    if (p?.telegramConnected) { setLinking(false); return; }
+    const poll = setInterval(() => { void refresh(); }, 3000);
+    const stop = setTimeout(() => setLinking(false), 120_000);
+    return () => { clearInterval(poll); clearTimeout(stop); };
+  }, [linking, p?.telegramConnected, refresh]);
 
   const run = async (fn: () => Promise<unknown>, after?: () => void) => {
     setBusy(true); setError("");
@@ -30,6 +42,16 @@ export default function Settings() {
     finally { setBusy(false); }
   };
   const alerts = (b: Parameters<typeof api.alerts>[0]) => run(() => api.alerts(b));
+  /** Saves the daily limit when the slider is let go (not on every tick). */
+  const saveLimit = () => { if (p && limit !== p.maxAlertsPerDay) void alerts({ maxAlertsPerDay: limit }); };
+  const connectTelegram = async () => {
+    setError("");
+    try {
+      const link = await api.telegramLink();
+      window.open(link.url, "_blank", "noopener,noreferrer");
+      setLinking(true);
+    } catch (e) { setError((e as Error).message); }
+  };
 
   return (
     <Transition>
@@ -54,11 +76,44 @@ export default function Settings() {
           <section className="card">
             <h3>Alerts</h3>
             <div className="setting"><div><b>Pause all alerts</b><p className="muted small">Going on holiday or busy with interviews? Your plan keeps running.</p></div><Toggle label="Pause all alerts" on={!!p?.alertsPaused} onChange={(v) => alerts({ paused: v })} /></div>
+            <div className="setting setting-stack">
+              <div><b>Daily limit</b><p className="muted small">The most instant alerts you get in one India day: {ALERTS_MIN} to {ALERTS_MAX}. A job counts once, whichever channel it goes to. The 9 AM summary is separate.</p></div>
+              <div className="limit">
+                <input type="range" min={ALERTS_MIN} max={ALERTS_MAX} step={1} value={limit} aria-label="Instant alerts per day"
+                  aria-valuemin={ALERTS_MIN} aria-valuemax={ALERTS_MAX} aria-valuenow={limit} aria-valuetext={`${limit} a day`}
+                  onChange={(e) => setLimit(Number(e.target.value))} onPointerUp={saveLimit} onKeyUp={saveLimit} onBlur={saveLimit} />
+                <output className="limit-value">{limit} a day</output>
+              </div>
+            </div>
+            <div className="setting"><div><b>Email: instant alerts</b><p className="muted small">{user?.email}. A message as soon as a strong match appears.</p></div><Toggle label="Email instant alerts" on={!!p?.emailInstant} onChange={(v) => alerts({ emailInstant: v })} /></div>
+            <div className="setting"><div><b>Email: morning summary</b><p className="muted small">One email at 9 AM with yesterday's best matches.</p></div><Toggle label="Email morning summary" on={!!p?.emailDigest} onChange={(v) => alerts({ emailDigest: v })} /></div>
+            {config?.telegram.enabled && (
+              <div className="setting">
+                <div>
+                  <b>Telegram</b>
+                  <p className="muted small">{p?.telegramConnected ? "Connected. Alerts arrive here as Telegram messages." : "Free. Get alerts as Telegram messages."}</p>
+                  {linking && !p?.telegramConnected && <p className="live-note">Open Telegram and press Start. This page updates when it is connected.</p>}
+                </div>
+                <div className="row-gap">
+                  {p?.telegramConnected ? (
+                    <>
+                      <Toggle label="Telegram alerts" on={!!p?.telegramAlerts} onChange={(v) => alerts({ telegramAlerts: v })} />
+                      <button className="btn soft sm" disabled={busy} onClick={() => run(() => api.telegramDisconnect())}>Disconnect</button>
+                    </>
+                  ) : (
+                    <button className="btn sm" disabled={busy} onClick={() => void connectTelegram()}>Connect Telegram</button>
+                  )}
+                </div>
+              </div>
+            )}
             <div className="setting">
-              <div><b>WhatsApp</b><p className="muted small">{p?.phone ? `+${p.phone.slice(0, 2)} ${p.phone.slice(2)}` : "No number saved. Add one in your profile."}{config && !config.whatsapp ? " · starting soon" : ""}</p></div>
+              <div>
+                <b>WhatsApp</b>
+                <p className="muted small">{p?.phone ? `+${p.phone.slice(0, 2)} ${p.phone.slice(2)}` : "No number saved. Add one in your profile."}{config && !config.whatsapp ? " · starting soon" : ""}</p>
+                <p className="muted small">A summary every morning at 9 AM{sub?.plan === "pro" ? ", plus instant alerts on Pro (up to 5 a day)" : ""}.</p>
+              </div>
               <Toggle label="WhatsApp alerts" on={!!p?.whatsappOptIn} onChange={(v) => (p?.phone ? alerts({ whatsappOptIn: v }) : nav("/profile"))} />
             </div>
-            <div className="setting"><div><b>Email</b><p className="muted small">{user?.email}</p></div><Toggle label="Email alerts" on={!!p?.emailAlerts} onChange={(v) => alerts({ emailAlerts: v })} /></div>
           </section>
 
           <section className="card" id="billing">

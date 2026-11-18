@@ -8,7 +8,7 @@ import { createBilling } from "../src/billing.js";
 import { loadConfig } from "../src/config.js";
 import { migrate, type Db } from "../src/db.js";
 import { roleFit, scoreMatch } from "../src/match.js";
-import { createNotifier, dueSlot } from "../src/notify.js";
+import { createNotifier, morningSlot } from "../src/notify.js";
 import { createPipeline } from "../src/pipeline.js";
 import { guessFromResume } from "../src/resume.js";
 import { normalisePhone } from "../src/routes.js";
@@ -63,7 +63,6 @@ async function addJob(db: Db, title: string, location = "Chennai, India", descri
   const j = await db.query<{ id: string }>("insert into jobs (source_id, external_id, company, title, location, in_india, url, description, posted_at) values ($1,$2,'Acme',$3,$4,true,'https://x.test/j',$5, now()) returning id", [s[0].id, title + location, title, location, description]);
   return j[0].id;
 }
-const afternoonIst = () => { const d = new Date(); d.setUTCHours(10, 0, 0, 0); return d; }; // 15:30 IST, after the 09:30 slot
 
 // ---------- pure logic ----------
 
@@ -102,13 +101,17 @@ test("helpers: phone, india detection, html, resume guess, digest slots", () => 
   assert.ok(g.skills.includes("SQL") && g.skills.includes("Power BI"));
   assert.equal(g.experienceYears, 3);
   assert.deepEqual(g.locations, ["Chennai"]);
-  // 10:00 IST = 04:30 UTC. Starter has one slot at 09:30 IST.
-  const ten = new Date("2026-11-14T04:30:00Z");
-  assert.ok(dueSlot("starter", null, ten));
-  assert.equal(dueSlot("starter", new Date("2026-11-14T04:10:00Z"), ten), null); // already sent after 09:30
-  assert.equal(dueSlot("starter", null, new Date("2026-11-14T03:00:00Z")), null); // 08:30 IST, too early
-  assert.ok(dueSlot("plus", new Date("2026-11-14T04:10:00Z"), new Date("2026-11-14T13:30:00Z"))); // evening slot
+  // One morning summary at 09:00 India time for every plan (03:30 UTC).
+  assert.equal(morningSlot(null, new Date("2026-11-14T03:29:00Z")), null); // 08:59 IST, too early
+  assert.ok(morningSlot(null, new Date("2026-11-14T04:30:00Z"))); // 10:00 IST, not sent yet
+  assert.equal(morningSlot(new Date("2026-11-14T03:31:00Z"), new Date("2026-11-14T04:30:00Z")), null); // already sent today
 });
+
+/** Real time, but the 09:01 India summary slot of today has just passed. */
+function morningIst(): Date {
+  const ist = new Date(Date.now() + 330 * 60_000);
+  return new Date(Date.UTC(ist.getUTCFullYear(), ist.getUTCMonth(), ist.getUTCDate()) - 330 * 60_000 + (9 * 60 + 1) * 60_000);
+}
 
 // ---------- flows ----------
 
@@ -148,11 +151,11 @@ test("profile, preview, mock purchase, matches, alerts, got-a-job, delete", asyn
     assert.ok(list.body.matches[0].score >= 8);
     assert.equal(list.body.subscribed, true);
 
-    // digest goes out once per slot, and marks matches as notified
-    const now = afternoonIst();
-    assert.equal(await t.notifier.runDigests(now), 1);
-    assert.equal(t.mails.filter((m) => m.subject.includes("new job")).length, 1);
-    assert.equal(await t.notifier.runDigests(now), 0);
+    // the instant email goes out once for the new match, and is never sent twice
+    const now = new Date();
+    assert.equal(await t.notifier.runInstant(now), 1);
+    assert.equal(t.mails.filter((m) => m.subject.startsWith("Strong match")).length, 1);
+    assert.equal(await t.notifier.runInstant(now), 0);
 
     // tailoring needs Pro
     const mid = list.body.matches[0].id as string;
@@ -173,6 +176,7 @@ test("profile, preview, mock purchase, matches, alerts, got-a-job, delete", asyn
     assert.equal(got.body.subscription.status, "active");
     await addJob(t.db, "Senior Data Analyst");
     await t.pipeline.backfillUser(user.id);
+    assert.equal(await t.notifier.runInstant(new Date(now.getTime() + 86_400_000)), 0);
     assert.equal(await t.notifier.runDigests(new Date(now.getTime() + 86_400_000)), 0);
 
     // cross-site write is refused; delete removes everything
@@ -242,7 +246,9 @@ test("whatsapp: template outside the window, STOP switches it off, admin is gate
     const co = await t.call("POST", "/api/billing/checkout", { plan: "starter" });
     await t.call("POST", "/api/billing/confirm", { ref: co.body.ref });
     await t.pipeline.backfillUser(user.id);
-    await t.notifier.runDigests(afternoonIst());
+    // the 09:00 summary lists yesterday's matches
+    await t.db.query("update matches set created_at = $1", [new Date(morningIst().getTime() - 12 * 3_600_000)]);
+    await t.notifier.runDigests(morningIst());
     assert.equal(sent.length, 1);
     assert.equal(sent[0].type, "template");
     assert.equal(sent[0].to, "919876543210");

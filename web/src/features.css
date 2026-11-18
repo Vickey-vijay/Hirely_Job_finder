@@ -1,0 +1,23 @@
+/* Styles for the alert settings and the Word download. Colours come from the variables in styles.css, so dark mode keeps working. */
+
+.setting-stack { flex-direction: column; align-items: stretch; }
+
+.limit { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.limit input[type="range"] { flex: 1 1 220px; min-width: 0; accent-color: var(--blue); height: 28px; cursor: pointer; }
+.limit-value {
+  min-width: 72px; text-align: right; font-weight: 700; color: var(--blue-deep);
+  font-family: "Plus Jakarta Sans", "Inter", system-ui, sans-serif;
+}
+
+.live-note { color: var(--blue-deep); font-size: 13.5px; margin-top: 6px; line-height: 1.5; }
+
+.word-btn { display: inline-flex; align-items: center; gap: 8px; }
+.word-btn::before {
+  content: ""; width: 14px; height: 16px; border-radius: 3px; flex: none;
+  background: linear-gradient(180deg, var(--blue) 0 33%, var(--blue-deep) 33% 100%);
+}
+
+@media (max-width: 520px) {
+  .limit { gap: 10px; }
+  .limit-value { min-width: 0; }
+}

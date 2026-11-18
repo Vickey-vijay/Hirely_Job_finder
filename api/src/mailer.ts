@@ -1,11 +1,13 @@
 import nodemailer from "nodemailer";
 import type { Config } from "./config.js";
 
+export type Attachment = { filename: string; content: Buffer; contentType?: string };
+
 export type Mailer = {
   /** false when no SMTP is configured in production: email features are switched off. */
   enabled: boolean;
   sendLoginCode(to: string, code: string): Promise<void>;
-  send(to: string, subject: string, text: string, html?: string): Promise<void>;
+  send(to: string, subject: string, text: string, html?: string, attachments?: Attachment[]): Promise<void>;
 };
 
 /** SMTP when configured; otherwise (development only) prints to the API console. */
@@ -17,8 +19,8 @@ export function createMailer(cfg: Config): Mailer {
         if (cfg.production) throw new Error("email not configured");
         console.log(`\n[DEV EMAIL] To: ${to}  |  Hirely login code: ${code}\n`);
       },
-      async send(to, subject, text) {
-        if (!cfg.production) console.log(`\n[DEV EMAIL] To: ${to}\nSubject: ${subject}\n${text}\n`);
+      async send(to, subject, text, _html, attachments) {
+        if (!cfg.production) console.log(`\n[DEV EMAIL] To: ${to}\nSubject: ${subject}\n${text}${attachments?.length ? `\n[attachments: ${attachments.map((a) => a.filename).join(", ")}]` : ""}\n`);
       },
     };
   }
@@ -39,8 +41,11 @@ export function createMailer(cfg: Config): Mailer {
         html: `<p>Your Hirely sign-in code is</p><p style="font-size:28px;letter-spacing:6px;font-weight:600">${code}</p><p>It expires in 10 minutes. If you didn't ask for it, you can ignore this email.</p>`,
       });
     },
-    async send(to, subject, text, html) {
-      await transport.sendMail({ from, to, subject, text, html });
+    async send(to, subject, text, html, attachments) {
+      await transport.sendMail({
+        from, to, subject, text, html,
+        attachments: attachments?.map((a) => ({ filename: a.filename, content: a.content, contentType: a.contentType })),
+      });
     },
   };
 }

@@ -68,6 +68,7 @@ export default function Plans() {
           </div>
         )}
 
+        <p className="muted small" style={{ marginBottom: 14 }}>Every plan sends instant alerts by email (and Telegram, once connected), and a morning summary at 9 AM. You set your daily limit (1 to 10 alerts a day) in Settings.</p>
         {config && <PlanCards plans={config.plans} current={sub && !sub.cancelAtPeriodEnd && sub.provider !== "razorpay_pass" ? sub.plan : null} busy={busy} onPick={pick}
           cta={(p) => (sub ? (sub.plan === p.id ? `Renew ${p.name}` : `Upgrade to ${p.name}`) : `Choose ${p.name}`)} />}
 

@@ -61,9 +61,16 @@ const app = createApp({
 
 const server = app.listen(cfg.port, "127.0.0.1", () => {
   console.log(`Hirely API listening on http://localhost:${cfg.port}`);
-  console.log(`  payments: ${cfg.billingMode} | whatsapp: ${cfg.whatsapp ? "on" : "off"} | ai: ${cfg.llm ? cfg.llm.model : "off"} | adzuna: ${cfg.adzuna ? "on" : "off"} | email: ${mailer.enabled ? "on" : "off"} | google: ${cfg.googleClientId ? "on" : "off"}`);
+  console.log(`  payments: ${cfg.billingMode} | whatsapp: ${cfg.whatsapp ? "on" : "off"} | telegram: ${cfg.telegram ? "on" : "off"} | ai: ${cfg.llm ? cfg.llm.model : "off"} | adzuna: ${cfg.adzuna ? "on" : "off"} | email: ${mailer.enabled ? "on" : "off"} | google: ${cfg.googleClientId ? "on" : "off"}`);
 });
 pipeline.start();
+
+// Tells Telegram where the webhook is. A failure is logged; the API keeps running.
+if (cfg.telegram) {
+  notifier.telegram.setWebhook(cfg.appUrl)
+    .then(() => console.log(`telegram: webhook set to ${cfg.appUrl}/api/webhooks/telegram`))
+    .catch((e: Error) => console.error("telegram: could not set the webhook:", e.message));
+}
 
 const shutdown = () => { pipeline.stop(); server.close(() => db.close().finally(() => process.exit(0))); };
 process.on("SIGTERM", shutdown);

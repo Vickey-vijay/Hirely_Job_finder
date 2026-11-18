@@ -5,7 +5,7 @@ import { LIVE_SQL } from "./billing.js";
 import type { Llm } from "./llm.js";
 import type { Notifier } from "./notify.js";
 import { scoreMatch, type MatchJob, type MatchProfile } from "./match.js";
-import { NOTIFY_MIN_SCORE, PLANS, STORE_MIN_SCORE, type PlanId } from "./plans.js";
+import { NOTIFY_MIN_SCORE, PLANS, STORE_MIN_SCORE, TAILOR_MIN_SCORE, type PlanId } from "./plans.js";
 import { fetchSource, type RawJob, type SourceRow } from "./sources.js";
 
 /**
@@ -21,6 +21,7 @@ import { fetchSource, type RawJob, type SourceRow } from "./sources.js";
 const SOURCES_PER_TICK = 4;
 const MATCH_WINDOW_DAYS = 21; // jobs posted longer ago than this are not worth alerting on
 const REFINE_PER_USER_PER_DAY = 15;
+const TAILOR_PER_TICK = 3;
 
 type JobRow = { id: string; title: string; company: string; location: string; remote: boolean; in_india: boolean; description: string; posted_at: Date | null };
 export type Subscriber = { user_id: string; plan: PlanId; profile: MatchProfile; headline: string };
@@ -33,6 +34,7 @@ export function createPipeline(cfg: Config, db: Db, billing: Billing, notifier: 
   let running = false;
   let timer: NodeJS.Timeout | undefined;
   let ticks = 0;
+  const tailorFailedAt = new Map<string, number>(); // match id -> when its tailored resume last failed
 
   const subscriberSql = (where: string) => `
     select p.user_id, s.plan, p.roles, p.skills, p.locations, p.remote_ok, p.experience_years::float8 as experience_years, p.headline
@@ -154,6 +156,45 @@ export function createPipeline(cfg: Config, db: Db, billing: Billing, notifier: 
     }
   }
 
+  /**
+   * Pro: writes a tailored resume for each strong new match (score 7+) and sends it as a Word file.
+   * Capped per user at the plan's tailorPerDay in any 24 hours, and at TAILOR_PER_TICK in each minute,
+   * because each one is a paid AI call. A match whose resume failed is not retried for six hours.
+   */
+  async function tailorStrong() {
+    if (!llm) return;
+    const rows = await db.query<{ id: string; user_id: string; title: string; company: string; description: string; resume_text: string }>(
+      `select m.id, m.user_id, j.title, j.company, j.description, p.resume_text
+       from matches m join jobs j on j.id = m.job_id join profiles p on p.user_id = m.user_id
+       join lateral (select plan from subscriptions where user_id = m.user_id and ${LIVE_SQL} order by current_period_end desc limit 1) s on true
+       where s.plan = 'pro' and m.score >= $1 and m.status = 'new' and j.active and not p.alerts_paused and p.got_job_at is null
+         and length(p.resume_text) >= 80 and m.created_at > now() - interval '2 days'
+         and not exists (select 1 from tailored_resumes t where t.match_id = m.id)
+       order by m.score desc, m.created_at desc limit $2`, [TAILOR_MIN_SCORE, TAILOR_PER_TICK * 4]);
+    let made = 0;
+    const used = new Map<string, number>();
+    for (const r of rows) {
+      if (made >= TAILOR_PER_TICK) break;
+      const failed = tailorFailedAt.get(r.id);
+      if (failed && Date.now() - failed < 6 * 3_600_000) continue;
+      if (!used.has(r.user_id)) {
+        const n = await db.query<{ n: string }>("select count(*)::text as n from tailored_resumes where user_id = $1 and created_at > now() - interval '24 hours'", [r.user_id]);
+        used.set(r.user_id, Number(n[0]?.n ?? 0));
+      }
+      if ((used.get(r.user_id) ?? 0) >= PLANS.pro.tailorPerDay) continue;
+      try {
+        const content = await llm.tailorResume({ resume: r.resume_text, jobTitle: r.title, company: r.company, jobDescription: r.description });
+        const saved = await db.query<{ id: string }>("insert into tailored_resumes (user_id, match_id, content) values ($1,$2,$3) on conflict (match_id) do nothing returning id", [r.user_id, r.id, content]);
+        used.set(r.user_id, (used.get(r.user_id) ?? 0) + 1);
+        made++;
+        if (saved.length) await notifier.deliverTailored(r.user_id, r.id);
+      } catch (e) {
+        tailorFailedAt.set(r.id, Date.now());
+        console.error("auto tailor failed:", (e as Error).message);
+      }
+    }
+  }
+
   /** One Adzuna search per distinct role our subscribers want, spaced so we stay inside the free daily quota. */
   async function syncAdzunaSources() {
     if (!cfg.adzuna) return;
@@ -184,6 +225,7 @@ export function createPipeline(cfg: Config, db: Db, billing: Billing, notifier: 
       }
       await refine();
       await notifier.runInstant();
+      await tailorStrong();
       await notifier.runDigests();
       if (ticks % 10 === 0) {
         await billing.expireEnded();
@@ -202,6 +244,7 @@ export function createPipeline(cfg: Config, db: Db, billing: Billing, notifier: 
   return {
     tick,
     backfillUser,
+    tailorStrong,
     start() {
       timer = setInterval(() => void tick(), 60_000);
       setTimeout(() => void tick(), 5_000);

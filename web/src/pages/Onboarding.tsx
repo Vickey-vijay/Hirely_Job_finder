@@ -143,7 +143,7 @@ export default function Onboarding({ edit = false }: { edit?: boolean }) {
 
               {step === 3 && (
                 <>
-                  <div><h2>Where should we send your alerts?</h2><p className="muted" style={{ marginTop: 6 }}>You always get your matches on your dashboard and by email at <b>{user?.email}</b>. WhatsApp is optional.</p></div>
+                  <div><h2>Where should we send your alerts?</h2><p className="muted" style={{ marginTop: 6 }}>You always get your matches on your dashboard and by email at <b>{user?.email}</b>. WhatsApp is optional.{config?.telegram.enabled ? " Telegram is free and you can connect it from Settings once you finish." : ""} You choose how many instant alerts you get a day in Settings.</p></div>
                   <div><label className="lbl" htmlFor="name">Your name</label><input id="name" className="field" maxLength={80} value={f.name} onChange={(e) => set("name", e.target.value)} /></div>
                   <div>
                     <label className="lbl" htmlFor="phone">WhatsApp number</label>

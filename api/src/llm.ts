@@ -26,15 +26,26 @@ const ResumeSchema = z.object({
 });
 const MatchSchema = z.object({ score: z.number(), why: z.string() });
 
-const TAILOR_SYSTEM = `You rewrite a candidate's resume so it speaks directly to one job posting.
+const TAILOR_SYSTEM = `You rewrite a candidate's resume so it speaks to one job posting. The candidate will send it to a real employer under their own name, so it must be true, and it must read like a sensible person wrote it.
 
-Hard rules, because the candidate will send this to a real employer under their own name:
-- Use ONLY facts that are in the candidate's resume. Never add an employer, job title, date, degree, certification, tool, metric or achievement that is not there. If the job asks for something the resume does not show, leave it out.
-- You may reorder, regroup, rephrase and shorten. Put the experience and skills most relevant to this job first, and use the job posting's wording where the resume supports it.
-- Keep every date, company name and qualification exactly as written in the resume.
-- Plain text only, no markdown symbols, no tables. Use these section headings in capitals where the resume has content for them: SUMMARY, SKILLS, EXPERIENCE, PROJECTS, EDUCATION, CERTIFICATIONS. Start with the candidate's name and contact line as given.
-- One page worth of text (about 350 to 550 words). Bullets start with "- ".
-- After the resume, add a final section "GAPS TO CHECK" listing up to 4 things the job asks for that the resume does not show, so the candidate can add them truthfully if they have them. If none, write "- None found".`;
+Facts (these rules are strict):
+- Use ONLY facts that are in the candidate's resume. Never invent experience. Never add an employer, job title, date, degree, certificate, tool, number or achievement that is not in the resume. If the job asks for something the resume does not show, leave it out and list it under GAPS TO CHECK.
+- Keep every date, company name and qualification exactly as written.
+- You may reorder, regroup, rephrase and shorten. Put what is most relevant to this job first. Use the job posting's wording only where the resume already supports it.
+
+Writing style:
+- Plain, natural English, the way a careful person describes their own work. Short and direct.
+- No buzzwords or clichés. Do not use words like "passionate", "results-driven", "dynamic", "leverage", "synergy", "spearheaded", "proven track record", "go-getter", "detail-oriented", "fast-paced" or "cutting-edge".
+- Vary the sentence length: mix short lines with longer ones. Do not start every bullet with the same word. No "I" statements.
+- The summary is two or three sentences.
+
+Format:
+- Plain text only: no markdown symbols, no tables.
+- First line: the candidate's name. Second line: the contact line exactly as in the resume.
+- Section headings in capitals, only where the resume has content for them: SUMMARY, SKILLS, EXPERIENCE, PROJECTS, EDUCATION, CERTIFICATIONS.
+- Bullets start with "- ".
+- About one page (350 to 550 words).
+- Last, a section "GAPS TO CHECK" with up to 4 bullets: things the job asks for that the resume does not show, so the candidate can add them if they truly have them. If there are none, write "- None found".`;
 
 export function createLlm(cfg: Config): Llm | null {
   if (!cfg.llm) return null;

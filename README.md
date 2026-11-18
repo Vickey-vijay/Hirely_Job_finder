@@ -1,6 +1,6 @@
 # Hirely: personal job alerts
 
-People sign in, say what job they want, upload a resume, and pick a monthly plan (₹99 / ₹199 / ₹499). Hirely watches public job sources, scores each opening 1 to 10 against the person's profile, and sends only the ones that fit by WhatsApp, email and a dashboard. The Pro plan also writes a resume tailored to each job.
+People sign in, say what job they want, upload a resume, and pick a monthly plan (₹99 / ₹199 / ₹299). Hirely watches public job sources, scores each opening 1 to 10 against the person's profile, and sends only the ones that fit by email, Telegram, WhatsApp and a dashboard. The Pro plan also writes a tailored resume for each strong match and sends it as a Word file.
 
 **Start with [`docs/START_HERE.md`](docs/START_HERE.md).** It is the step-by-step guide from "deployed in test mode" to "taking real payments": domain, Google sign-in, email, Razorpay, WhatsApp, business registration, costs, daily operations and troubleshooting.
 

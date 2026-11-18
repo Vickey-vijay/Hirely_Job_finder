@@ -15,6 +15,7 @@ export type Config = {
   billingMode: BillingMode;
   razorpay?: { keyId: string; keySecret: string; webhookSecret: string; planIds: Partial<Record<PlanId, string>> };
   whatsapp?: { token: string; phoneId: string; appSecret: string; verifyToken: string; template: string; templateLang: string; apiVersion: string };
+  telegram?: { token: string; botUsername: string; webhookSecret: string };
   llm?: { apiKey: string; model: string };
   adzuna?: { appId: string; appKey: string };
   ingestEnabled: boolean;
@@ -80,6 +81,14 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     if (production && (!whatsapp.appSecret || !whatsapp.verifyToken)) problems.push("WHATSAPP_APP_SECRET and WHATSAPP_VERIFY_TOKEN are required in production");
   }
 
+  // ---- Telegram (free Bot API). Empty token = Telegram is off everywhere. ----
+  let telegram: Config["telegram"];
+  if (v("TELEGRAM_BOT_TOKEN")) {
+    telegram = { token: v("TELEGRAM_BOT_TOKEN"), botUsername: v("TELEGRAM_BOT_USERNAME").replace(/^@/, ""), webhookSecret: v("TELEGRAM_WEBHOOK_SECRET") };
+    if (!telegram.botUsername) problems.push("TELEGRAM_BOT_TOKEN is set, so TELEGRAM_BOT_USERNAME is required");
+    if (!/^[A-Za-z0-9_-]{16,256}$/.test(telegram.webhookSecret)) problems.push("TELEGRAM_WEBHOOK_SECRET is required when TELEGRAM_BOT_TOKEN is set (16+ letters, digits, _ or -)");
+  }
+
   const allowedOrigins = (v("ALLOWED_ORIGINS") || "http://localhost:5173").split(",").map((s) => s.trim()).filter(Boolean);
   if (problems.length) throw new Error("Config error:\n - " + problems.join("\n - "));
 
@@ -89,7 +98,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     port: Number(v("PORT") || 4000),
     production, smtp,
     adminEmails: v("ADMIN_EMAILS").toLowerCase().split(",").map((s) => s.trim()).filter(Boolean),
-    billingMode, razorpay, whatsapp,
+    billingMode, razorpay, whatsapp, telegram,
     llm: v("ANTHROPIC_API_KEY") ? { apiKey: v("ANTHROPIC_API_KEY"), model: v("LLM_MODEL") || "claude-haiku-5-5" } : undefined,
     adzuna: v("ADZUNA_APP_ID") && v("ADZUNA_APP_KEY") ? { appId: v("ADZUNA_APP_ID"), appKey: v("ADZUNA_APP_KEY") } : undefined,
     ingestEnabled: v("INGEST_ENABLED") !== "false",

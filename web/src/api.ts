@@ -1,14 +1,19 @@
 /** Typed calls to the Hirely API. Every function throws ApiError with a message that is safe to show the user. */
 
-export type Plan = { id: "starter" | "plus" | "pro"; name: string; pricePaise: number; maxRoles: number; digestsPerDay: number; instantAlerts: boolean; tailoredResume: boolean; tailorPerDay: number; tagline: string; features: string[] };
+export type Plan = { id: "starter" | "plus" | "pro"; name: string; pricePaise: number; maxRoles: number; instantAlerts: boolean; whatsappInstant: boolean; tailoredResume: boolean; tailorPerDay: number; tagline: string; features: string[] };
 export type Domain = { name: string; roles: string[]; skills: string[] };
+/** Daily limit for instant alerts (per India day). The server clamps to the same range. */
+export const ALERTS_MIN = 1;
+export const ALERTS_MAX = 10;
 export type PublicConfig = {
   plans: Plan[]; billingMode: "subscription" | "pass" | "mock" | "off"; googleClientId: string; emailLogin: boolean; whatsapp: boolean; ai: boolean;
+  telegram: { enabled: boolean; botUsername: string };
   business: { name: string; contactEmail: string; supportUpi: string; grievanceName: string; address: string };
   domains: Domain[]; cities: string[]; stats: { jobs: number; companies: number; sources: number };
 };
 export type Profile = {
-  phone: string | null; whatsappOptIn: boolean; emailAlerts: boolean; headline: string; domain: string; roles: string[]; skills: string[]; locations: string[];
+  phone: string | null; whatsappOptIn: boolean; emailInstant: boolean; emailDigest: boolean; maxAlertsPerDay: number;
+  telegramConnected: boolean; telegramAlerts: boolean; headline: string; domain: string; roles: string[]; skills: string[]; locations: string[];
   remoteOk: boolean; experienceYears: number; resumeFilename: string | null; resumeUploadedAt: string | null; hasResume: boolean; alertsPaused: boolean; gotJobAt: string | null; onboardedAt: string | null;
 };
 export type Subscription = { plan: Plan["id"]; planName: string; status: string; provider: string; autoRenews: boolean; cancelAtPeriodEnd: boolean; periodStart: string | null; periodEnd: string | null };
@@ -35,6 +40,7 @@ const MESSAGES: Record<string, string> = {
   payment_provider_error: "The payment service didn't respond. Nothing was charged. Please try again.",
   bad_signature: "We couldn't verify that payment. If money was taken, it will be matched automatically within a few minutes; otherwise contact us.",
   pro_required: "Tailored resumes are part of the Pro plan.",
+  telegram_disabled: "Telegram alerts are not switched on yet. Check back soon.",
   ai_not_configured: "Tailored resumes are not switched on yet.",
   resume_required: "Upload your resume first so we have something to tailor.",
   daily_limit: "You've used today's tailored resumes. More are available tomorrow.",
@@ -72,7 +78,10 @@ export const api = {
   saveProfile: (p: Record<string, unknown>) => call<{ profile: Profile }>("PUT", "/api/profile", p),
   uploadResume: (file: File) => { const f = new FormData(); f.append("file", file); return call<{ guess: Guess; usedAi: boolean }>("POST", "/api/profile/resume", f); },
   deleteResume: () => call<void>("DELETE", "/api/profile/resume"),
-  alerts: (b: { paused?: boolean; whatsappOptIn?: boolean; emailAlerts?: boolean }) => call<{ profile: Profile }>("PATCH", "/api/account/alerts", b),
+  alerts: (b: { paused?: boolean; whatsappOptIn?: boolean; emailInstant?: boolean; emailDigest?: boolean; telegramAlerts?: boolean; maxAlertsPerDay?: number }) =>
+    call<{ profile: Profile }>("PATCH", "/api/account/alerts", b),
+  telegramLink: () => call<{ token: string; url: string; expiresAt: string }>("POST", "/api/account/telegram/link", {}),
+  telegramDisconnect: () => call<{ profile: Profile }>("POST", "/api/account/telegram/disconnect", {}),
   gotJob: () => call<{ subscription: Subscription | null }>("POST", "/api/account/got-job", {}),
   lookingAgain: () => call<void>("POST", "/api/account/looking-again", {}),
   deleteAccount: () => call<void>("DELETE", "/api/account"),
@@ -93,6 +102,9 @@ export const api = {
     users: () => call<{ users: any[] }>("GET", "/api/admin/users"),
   },
 };
+
+/** The tailored resume as a Word file (same site, so the signed-in cookie is sent). */
+export const tailorWordUrl = (matchId: string) => `/api/matches/${encodeURIComponent(matchId)}/tailor.docx`;
 
 export const rupees = (paise: number) => `₹${(paise / 100).toLocaleString("en-IN")}`;
 export const fmtDate = (iso: string | null | undefined) => (iso ? new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "");
